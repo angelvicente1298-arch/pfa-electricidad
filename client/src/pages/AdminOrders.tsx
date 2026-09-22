@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import {
   ExternalLink,
   Filter,
   ListFilter,
+  LockKeyhole,
   MapPin,
   MessageSquare,
   Phone,
@@ -47,13 +49,15 @@ const statusStyles: Record<OrderStatus, string> = {
 const formatDate = (value: string | Date) => new Date(value).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
 export default function AdminOrders() {
+  const { user, loading: authLoading, isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
+  const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | OrderStatus>("todos");
   const [communeFilter, setCommuneFilter] = useState("todas");
 
   const utils = trpc.useUtils();
-  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery();
-  const { data: stats } = trpc.orders.stats.useQuery();
+  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery(undefined, { enabled: isAdmin });
+  const { data: stats } = trpc.orders.stats.useQuery(undefined, { enabled: isAdmin });
   const updateStatus = trpc.orders.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("Estado actualizado");
@@ -74,6 +78,14 @@ export default function AdminOrders() {
 
   const maxServiceCount = Math.max(...(stats?.porServicio?.map((item) => item.count) || [1]));
   const maxCommuneCount = Math.max(...(stats?.porComuna?.map((item) => item.count) || [1]));
+
+  if (authLoading || !isAuthenticated) {
+    return <AdminAccessState title="Verificando acceso" description="Estamos validando tu sesión de administrador." loading />;
+  }
+
+  if (!isAdmin) {
+    return <AdminAccessState title="Acceso restringido" description="Esta sección es privada y solo está disponible para el administrador de PFA Electricidad." />;
+  }
 
   const changeStatus = (id: number, estado: OrderStatus) => updateStatus.mutate({ id, estado });
   const whatsappForClient = (phone: string, name: string, service: string) => `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hola ${name}, te contactamos de PFA Electricidad SpA por tu solicitud de ${service}.`)}`;
@@ -118,6 +130,10 @@ export default function AdminOrders() {
       </main>
     </div>
   );
+}
+
+function AdminAccessState({ title, description, loading = false }: { title: string; description: string; loading?: boolean }) {
+  return <div className="grid min-h-screen place-items-center bg-[#050814] px-6 text-center text-slate-100"><div className="max-w-md rounded-3xl border border-white/10 bg-white/[.04] p-8 shadow-2xl"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-400/10 text-amber-300">{loading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <LockKeyhole className="h-6 w-6" />}</span><h1 className="heading-font mt-5 text-2xl font-bold text-white">{title}</h1><p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>{!loading && <Link href="/" className="mt-6 inline-flex rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-300">Volver al sitio</Link>}</div></div>;
 }
 
 function KpiCard({ icon, label, value, hint, tone }: { icon: React.ReactNode; label: string; value: number; hint: string; tone: "blue" | "amber" | "violet" | "emerald" }) {

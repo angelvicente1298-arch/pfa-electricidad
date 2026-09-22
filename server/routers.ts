@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 
@@ -79,10 +79,10 @@ export const appRouter = router({
         };
       }),
 
-    list: publicProcedure.query(async () => db.getAllOrders()),
-    stats: publicProcedure.query(async () => db.getOrderStats()),
+    list: adminProcedure.query(async () => db.getAllOrders()),
+    stats: adminProcedure.query(async () => db.getOrderStats()),
 
-    updateStatus: publicProcedure
+    updateStatus: adminProcedure
       .input(
         z.object({
           id: z.number(),
