@@ -36,6 +36,7 @@ const comunas = [
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [orderConfirmationUrl, setOrderConfirmationUrl] = useState<string | null>(null);
   const [modalType, setModalType] = useState<"servicio" | "visita">("servicio");
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -87,8 +88,11 @@ export default function Home() {
 
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (data) => {
-      toast.success("Solicitud registrada. Abriendo WhatsApp con el detalle completo.");
-      if (data.whatsappUrl) window.location.assign(data.whatsappUrl);
+      toast.success("Solicitud registrada correctamente.");
+      if (data.whatsappUrl) {
+        window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
+        setOrderConfirmationUrl(data.whatsappUrl);
+      }
       setModalOpen(false);
       setFormData({ nombre: "", telefono: "", comuna: "Las Condes", servicio: "Reparación Urgente / Emergencia", tipoPropiedad: "Residencial", urgencia: "Inmediata (Hoy)", mensaje: "" });
     },
@@ -384,6 +388,8 @@ export default function Home() {
           </div>
         </div>
       )}
+      {orderConfirmationUrl && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-[#0B1428] p-7 text-center shadow-2xl"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><CheckCircle2 className="h-7 w-7" /></span><p className="mt-5 text-xs font-black uppercase tracking-[.18em] text-emerald-300">Solicitud registrada</p><h2 className="heading-font mt-2 text-2xl font-bold text-white">Tu pedido fue guardado correctamente</h2><p className="mt-3 text-sm leading-6 text-slate-400">WhatsApp debería haberse abierto en otra pestaña. Si no ocurrió, usa el botón para enviar el detalle al número oficial.</p><div className="mt-6 grid gap-3"><a href={orderConfirmationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-400"><MessageSquare className="h-4 w-4" /> Abrir WhatsApp</a><a href={`tel:+${WHATSAPP_NUMBER}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm font-bold text-amber-200 transition hover:bg-amber-300/20"><Phone className="h-4 w-4" /> Llamar al {DISPLAY_PHONE}</a><button onClick={() => setOrderConfirmationUrl(null)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10">Cerrar</button></div></div></div>}
+
       {/* Service modal */}
       {modalOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/15 bg-[#0B1428] p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-amber-300">PFA Electricidad</p><h2 className="heading-font mt-2 text-2xl font-bold text-white">{modalType === "visita" ? "Agendar visita técnica" : "Solicitar servicio"}</h2><p className="mt-2 text-sm text-slate-400">Tu solicitud se registra y se envía preparada al número {DISPLAY_PHONE}.</p></div><button onClick={() => setModalOpen(false)} className="rounded-xl border border-white/10 p-2 text-slate-400 transition hover:text-white"><X className="h-5 w-5" /></button></div><form onSubmit={handleSubmit} className="mt-6 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><label className="label">Nombre completo *<input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="field mt-2" placeholder="Tu nombre" /></label><label className="label">Teléfono / WhatsApp *<input required type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} className="field mt-2" placeholder="9 1234 5678" /></label></div><div className="grid gap-4 sm:grid-cols-2"><label className="label">Comuna<select value={formData.comuna} onChange={(e) => setFormData({ ...formData, comuna: e.target.value })} className="field mt-2">{comunas.map((item) => <option key={item}>{item}</option>)}</select></label><label className="label">Tipo de propiedad<select value={formData.tipoPropiedad} onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value })} className="field mt-2"><option>Residencial</option><option>Departamento</option><option>Comercial</option><option>Industrial</option></select></label></div><label className="label">Servicio requerido<input value={formData.servicio} onChange={(e) => setFormData({ ...formData, servicio: e.target.value })} className="field mt-2" /></label><label className="label">¿Qué pasó? *<textarea required rows={3} value={formData.mensaje} onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })} className="field mt-2 resize-none" placeholder="Cuéntanos con tus palabras qué ocurrió..." /></label><div className="flex gap-3 pt-2"><button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10">Cancelar</button><button disabled={createOrderMutation.isPending} className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-300 disabled:opacity-60">{createOrderMutation.isPending ? "Registrando..." : "Confirmar solicitud"}</button></div></form></div></div>}
     </div>
