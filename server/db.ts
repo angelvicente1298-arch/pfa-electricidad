@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, orders, InsertOrder } from "../drizzle/schema";
+import { InsertUser, users, orders, InsertOrder, reviews, InsertReview } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -135,4 +135,30 @@ export async function getOrderStats() {
   const porComuna = Object.entries(countByComuna).map(([comuna, count]) => ({ comuna, count }));
 
   return { total, pendientes, contactados, completados, porServicio, porComuna };
+}
+
+export async function createReview(data: InsertReview) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  const [result] = await db.insert(reviews).values(data);
+  return result;
+}
+
+export async function getApprovedReviews() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).where(eq(reviews.estado, "aprobada")).orderBy(desc(reviews.createdAt));
+}
+
+export async function getAllReviews() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).orderBy(desc(reviews.createdAt));
+}
+
+export async function updateReviewStatus(id: number, estado: "pendiente" | "aprobada" | "rechazada") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  await db.update(reviews).set({ estado }).where(eq(reviews.id, id));
+  return { success: true };
 }

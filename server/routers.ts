@@ -190,6 +190,58 @@ INFORMACIÓN VERIFICADA DE PFA:
         return db.updateOrderStatus(input.id, input.estado);
       }),
   }),
+
+  reviews: router({
+    listApproved: publicProcedure.query(async () => db.getApprovedReviews()),
+
+    submit: publicProcedure
+      .input(
+        z.object({
+          nombre: z.string().trim().min(2).max(100),
+          comuna: z.string().trim().max(100).optional(),
+          servicio: z.string().trim().max(150).optional(),
+          calificacion: z.number().int().min(1).max(5),
+          comentario: z.string().trim().min(5).max(1000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await db.createReview({
+          nombre: input.nombre,
+          comuna: input.comuna || "Santiago",
+          servicio: input.servicio || "Servicio Eléctrico",
+          calificacion: input.calificacion,
+          comentario: input.comentario,
+          estado: "pendiente",
+        });
+        return { success: true, message: "Tu reseña fue recibida y quedará visible tras su aprobación." };
+      }),
+
+    listAll: adminProcedure
+      .input(z.object({ password: z.string() }))
+      .query(async ({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured || !timingSafeEqualStrings(input.password, configured)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña del panel requerida o incorrecta" });
+        }
+        return db.getAllReviews();
+      }),
+
+    updateStatus: adminProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          estado: z.enum(["pendiente", "aprobada", "rechazada"]),
+          password: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured || !timingSafeEqualStrings(input.password, configured)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña del panel requerida o incorrecta" });
+        }
+        return db.updateReviewStatus(input.id, input.estado);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -42,3 +42,17 @@ export const orders = mysqlTable("orders", {
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
+
+export const reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  nombre: varchar("nombre", { length: 191 }).notNull(),
+  comuna: varchar("comuna", { length: 100 }),
+  servicio: varchar("servicio", { length: 150 }),
+  calificacion: int("calificacion").notNull(),
+  comentario: text("comentario").notNull(),
+  estado: mysqlEnum("estado", ["pendiente", "aprobada", "rechazada"]).default("pendiente").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;
