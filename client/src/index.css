@@ -96,6 +96,19 @@
 @layer components {
   .field {
     @apply min-h-11 rounded-xl border border-white/10 bg-white/[.045] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 transition focus:border-amber-300/60 focus:bg-white/[.07] focus:outline-none focus:ring-2 focus:ring-amber-300/10;
+    color-scheme: dark;
+  }
+
+  select.field,
+  select.field option {
+    background-color: #101a30;
+    color: #f8fafc;
+  }
+
+  select.field option:checked,
+  select.field option:hover {
+    background-color: #d99b18;
+    color: #050814;
   }
 
   .label {
