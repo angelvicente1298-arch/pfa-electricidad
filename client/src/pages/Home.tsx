@@ -18,9 +18,17 @@ import {
   Car,
   Lightbulb,
   Cpu,
-  Star
+  Star,
+  BarChart2,
+  Check,
+  Layers,
+  Wrench,
+  Flame,
+  ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 export default function Home() {
   // Modal / drawer state for "Solicitar Servicio" and "Visita Técnica"
@@ -37,13 +45,38 @@ export default function Home() {
   ]);
   const [chatInput, setChatInput] = useState("");
 
-  // Hero Lead Form state
+  // Lead Form state
   const [formData, setFormData] = useState({
     nombre: "",
     telefono: "",
     comuna: "Las Condes",
     servicio: "Reparación Urgente / Emergencia",
+    tipoPropiedad: "Residencial",
+    urgencia: "Inmediata (Hoy)",
     mensaje: ""
+  });
+
+  const createOrderMutation = trpc.orders.create.useMutation({
+    onSuccess: (data) => {
+      toast.success("¡Solicitud registrada en el panel con éxito!");
+      // Open WhatsApp to +56 9 6193 5547 with full details
+      if (data.whatsappUrl) {
+        window.open(data.whatsappUrl, "_blank");
+      }
+      setModalOpen(false);
+      setFormData({
+        nombre: "",
+        telefono: "",
+        comuna: "Las Condes",
+        servicio: "Reparación Urgente / Emergencia",
+        tipoPropiedad: "Residencial",
+        urgencia: "Inmediata (Hoy)",
+        mensaje: ""
+      });
+    },
+    onError: (err) => {
+      toast.error(`Error al registrar solicitud: ${err.message}`);
+    }
   });
 
   const handleHeroSubmit = (e: React.FormEvent) => {
@@ -53,10 +86,15 @@ export default function Home() {
       return;
     }
 
-    const text = `Hola PFA Electricidad SpA, soy ${formData.nombre}. Necesito: ${formData.servicio} en la comuna de ${formData.comuna}. Contacto: ${formData.telefono}. Detalle: ${formData.mensaje || "Sin detalle adicional"}`;
-    const whatsappUrl = `https://wa.me/56961935547?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, "_blank");
-    toast.success("¡Redirigiendo a WhatsApp de PFA Electricidad!");
+    createOrderMutation.mutate({
+      nombre: formData.nombre.trim(),
+      telefono: formData.telefono.trim(),
+      comuna: formData.comuna,
+      servicio: formData.servicio,
+      tipoPropiedad: formData.tipoPropiedad,
+      urgencia: formData.urgencia,
+      mensaje: formData.mensaje.trim()
+    });
   };
 
   const handleChatSend = (e: React.FormEvent) => {
@@ -69,17 +107,17 @@ export default function Home() {
 
     setTimeout(() => {
       let botReply =
-        "Contamos con electricistas certificados SEC para toda la Región Metropolitana. ¿Deseas agendar visita técnica o necesitas contacto directo con el instalador de turno?";
+        "Contamos con electricistas certificados SEC para toda la Región Metropolitana. ¿Deseas agendar visita técnica o necesitas contacto directo al +56 9 6193 5547?";
       const lower = userText.toLowerCase();
-      if (lower.includes("precio") || lower.includes("cuanto") || lower.includes("costo")) {
+      if (lower.includes("precio") || lower.includes("cuanto") || lower.includes("costo") || lower.includes("tarifa")) {
         botReply =
-          "Nuestros presupuestos son claros y sin sorpresas. Las visitas técnicas parten desde una tarifa base deducible si apruebas el trabajo. ¿Para qué tipo de propiedad es (casa, departamento, local o industria)?";
-      } else if (lower.includes("urgencia") || lower.includes("emergencia") || lower.includes("corte")) {
+          "Nuestros presupuestos son claros y detallados. Las revisiones de urgencia o inspecciones parten desde una tarifa base deducible de la reparación final. ¿Para qué comuna sería?";
+      } else if (lower.includes("urgencia") || lower.includes("emergencia") || lower.includes("corte") || lower.includes("fuego") || lower.includes("humo")) {
         botReply =
-          "¡Atendemos emergencias de inmediato! Te sugerimos llamar al +56 9 6193 5547 para coordinar el móvil de urgencia de PFA Electricidad.";
-      } else if (lower.includes("sec") || lower.includes("te1") || lower.includes("certificacion")) {
+          "🚨 ¡Emergencia detectada! Te recomendamos cortar el automático general y comunicarte directamente al teléfono +56 9 6193 5547 para despachar al móvil de turno.";
+      } else if (lower.includes("sec") || lower.includes("te1") || lower.includes("certificacion") || lower.includes("enel")) {
         botReply =
-          "Todos nuestros técnicos son instaladores autorizados por la Superintendencia de Electricidad y Combustibles (SEC) y tramitamos declaraciones TE1, TE2 y TE4 garantizadas.";
+          "Gestionamos declaraciones TE1 oficiales ante la SEC para viviendas, edificios comerciales e industrias. Todos nuestros técnicos cuentan con credencial SEC vigente.";
       }
 
       setChatMessages((prev) => [...prev, { sender: "bot", text: botReply }]);
@@ -90,32 +128,38 @@ export default function Home() {
     {
       icon: <Building2 className="w-7 h-7 text-amber-400" />,
       title: "Instalaciones Residenciales y Comerciales",
-      desc: "Proyectos integrales desde el cableado principal hasta enchufes, automáticos y tableros bajo norma chilena NCh Elec. 4/2003 y pliegos RIC."
+      badge: "Norma RIC 2026",
+      desc: "Diseño y montaje completo desde la acometida hasta circuitos de fuerza, iluminación y enchufes para locales y viviendas."
     },
     {
       icon: <FileCheck2 className="w-7 h-7 text-amber-400" />,
       title: "Certificación y Declaración SEC (TE1)",
-      desc: "Regularizaciones eléctricas, aumento de capacidad, emisión de informes oficiales y tramitación garantizada ante la SEC Santiago."
+      badge: "Oficial SEC",
+      desc: "Trámite de planos y carpetas técnicas garantizadas ante la SEC para empalmes definitivos, aumentos de potencia y patentes."
     },
     {
       icon: <Cpu className="w-7 h-7 text-amber-400" />,
       title: "Renovación y Normalización de Tableros",
-      desc: "Cambio de automáticos, instalación de disyuntores diferenciales, barras de distribución y peinetas para máxima protección contra incendios."
+      badge: "Seguridad Total",
+      desc: "Reemplazo de protecciones obsoletas, montaje de interruptores termomagnéticos y diferenciales tipo A para prevenir incendios."
     },
     {
       icon: <Car className="w-7 h-7 text-amber-400" />,
       title: "Cargadores para Vehículos Eléctricos (EV)",
-      desc: "Instalación de Wallbox domiciliarios y comerciales con circuito independiente, protecciones exclusivas y certificación SEC."
+      badge: "Electromovilidad",
+      desc: "Instalación certificada de cargadores tipo Wallbox residenciales y flotas corporativas con tablero y protecciones dedicadas."
     },
     {
       icon: <Lightbulb className="w-7 h-7 text-amber-400" />,
-      title: "Iluminación LED y Eficiencia Energética",
-      desc: "Conversión de sistemas lumínicos industriales, reflectores de alta potencia, iluminación arquitectónica y domótica inteligente."
+      title: "Iluminación LED y Ahorro Energético",
+      badge: "Alta Eficiencia",
+      desc: "Proyectos de reconversión lumínica para galpones, estacionamientos y oficinas con hasta 65% de ahorro en consumo eléctrico."
     },
     {
       icon: <AlertTriangle className="w-7 h-7 text-amber-400" />,
       title: "Servicio de Urgencias Eléctricas 24/7",
-      desc: "Detección rápida de cortocircuitos, fugas a tierra, caídas de fase y restitución segura del suministro en hogares y empresas."
+      badge: "Respuesta Rápida",
+      desc: "Atención prioritaria de cortocircuitos, caídas de fase, automáticos trabados y reposición segura de energía en Santiago."
     }
   ];
 
@@ -126,10 +170,10 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050B17] text-slate-100 flex flex-col font-sans relative selection:bg-amber-400 selection:text-slate-900 pb-20 sm:pb-0">
+    <div className="min-h-screen bg-[#040814] text-slate-100 flex flex-col font-sans relative selection:bg-amber-400 selection:text-slate-900 pb-24 sm:pb-0">
       
       {/* 1. TOP ANNOUNCEMENT BAR */}
-      <div className="bg-[#0b1329] border-b border-amber-500/20 text-xs sm:text-sm py-2 px-4 relative z-50">
+      <div className="bg-[#091226] border-b border-amber-500/25 text-xs sm:text-sm py-2 px-4 relative z-50">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <span className="bg-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded text-[11px] uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
@@ -139,18 +183,29 @@ export default function Home() {
               Instalaciones y Servicios Garantizados SEC Santiago de Chile
             </span>
           </div>
-          <a
-            href="tel:+56961935547"
-            className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-semibold transition-colors bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 text-xs sm:text-sm"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            +56 9 6193 5547
-          </a>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/pedidos"
+              className="text-slate-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1 bg-slate-900/80 px-2.5 py-0.5 rounded border border-slate-700 hover:border-amber-500/40 transition"
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
+              Panel de Pedidos & Estadísticas
+            </Link>
+
+            <a
+              href="tel:+56961935547"
+              className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-bold transition-colors bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 text-xs"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              +56 9 6193 5547
+            </a>
+          </div>
         </div>
       </div>
 
       {/* 2. MAIN HEADER */}
-      <header className="sticky top-0 z-40 bg-[#060D1E]/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg">
+      <header className="sticky top-0 z-40 bg-[#050C1F]/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
           
           {/* Logo Brand matching exact reference */}
@@ -179,6 +234,14 @@ export default function Home() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/pedidos"
+              className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-900/90 border border-slate-700 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow"
+            >
+              <BarChart2 className="w-4 h-4 text-amber-400" />
+              Ver Pedidos
+            </Link>
+
             <a
               href="https://wa.me/56961935547?text=Hola%20PFA%20Electricidad%20SpA,%20necesito%20asistencia%20el%C3%A9ctrica%20en%20Santiago"
               target="_blank"
@@ -207,12 +270,6 @@ export default function Home() {
       {/* 3. HERO SECTION */}
       <section className="relative pt-10 pb-16 md:pt-16 md:pb-24 overflow-hidden border-b border-slate-800/60">
         
-        {/* Electrician visual texture backdrop on right side */}
-        <div 
-          className="absolute right-0 top-0 bottom-0 w-full lg:w-1/2 opacity-15 pointer-events-none bg-no-repeat bg-right-top bg-contain mix-blend-screen"
-          style={{ backgroundImage: `url('/manus-storage/hero-bg_9516a2e7.png')` }}
-        />
-
         {/* Glow ambient background lights */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[140px] pointer-events-none rounded-full" />
         <div className="absolute top-1/3 right-10 w-[450px] h-[350px] bg-amber-500/10 blur-[130px] pointer-events-none rounded-full" />
@@ -238,18 +295,22 @@ export default function Home() {
             </p>
 
             {/* Checkpoints row */}
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mb-10 text-xs sm:text-sm text-slate-200 font-medium">
-              <div className="flex items-center gap-2 bg-slate-900/60 px-3.5 py-1.5 rounded-full border border-slate-800">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-10 text-xs sm:text-sm text-slate-200 font-medium">
+              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>Matriculados Oficiales</span>
               </div>
-              <div className="flex items-center gap-2 bg-slate-900/60 px-3.5 py-1.5 rounded-full border border-slate-800">
+              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>Bot IA 24/7 Activo</span>
               </div>
-              <div className="flex items-center gap-2 bg-slate-900/60 px-3.5 py-1.5 rounded-full border border-slate-800">
+              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>Presupuesto Claro</span>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800 text-amber-300">
+                <Phone className="w-3.5 h-3.5 text-amber-400" />
+                <span>WhatsApp: +56 9 6193 5547</span>
               </div>
             </div>
 
@@ -290,14 +351,14 @@ export default function Home() {
                     Para Hacer Tu Proyecto
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-400">
-                    Completa tus datos y nos llega directo a WhatsApp con prioridad de atención
+                    Completa tus datos: se guarda en el panel administrativo y te redirige a WhatsApp al +56 9 6193 5547
                   </p>
                 </div>
               </div>
 
               <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full text-xs font-semibold self-start sm:self-auto">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Respuesta Inmediata
+                Registro Inmediato
               </div>
             </div>
 
@@ -352,7 +413,7 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-1">
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Tipo de Servicio
+                    Servicio Requerido
                   </label>
                   <select
                     value={formData.servicio}
@@ -363,18 +424,18 @@ export default function Home() {
                     <option value="Renovación de Tablero">Renovación de Tablero Eléctrico</option>
                     <option value="Certificación SEC / TE1">Certificación SEC (TE1)</option>
                     <option value="Instalación Cargador EV">Instalación Cargador Vehículo Eléctrico</option>
-                    <option value="Instalación Eléctrica Nueva">Instalación Eléctrica Completa</option>
+                    <option value="Instalación Eléctrica Completa">Instalación Eléctrica Completa</option>
                     <option value="Iluminación LED">Iluminación LED Comercial/Hogar</option>
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Detalle o Breve Descripción del Requerimiento
+                    Detalle del Requerimiento / Problema Eléctrico
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. Se cae el automático principal / Necesito regularizar casa para venta"
+                    placeholder="Ej. Salta el automático general / Necesito regularizar para venta"
                     value={formData.mensaje}
                     onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
                     className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
@@ -390,10 +451,11 @@ export default function Home() {
 
                 <button
                   type="submit"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#00a884] hover:bg-[#009273] text-white font-extrabold px-6 py-3 rounded-xl transition shadow-lg hover:shadow-[#00a884]/20 hover:scale-[1.01] active:scale-[0.99] text-sm"
+                  disabled={createOrderMutation.isPending}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#00a884] hover:bg-[#009273] disabled:opacity-50 text-white font-extrabold px-6 py-3 rounded-xl transition shadow-lg hover:shadow-[#00a884]/20 hover:scale-[1.01] active:scale-[0.99] text-sm"
                 >
                   <Send className="w-4 h-4" />
-                  Enviar a WhatsApp Directo
+                  {createOrderMutation.isPending ? "Guardando..." : "Enviar a WhatsApp Directo (+56 9 6193 5547)"}
                 </button>
               </div>
             </form>
@@ -402,7 +464,7 @@ export default function Home() {
       </section>
 
       {/* 4. SERVICES SECTION */}
-      <section className="py-20 bg-[#070E21] border-b border-slate-800/80">
+      <section className="py-20 bg-[#060D21] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <div className="inline-flex items-center gap-1.5 text-amber-400 text-xs font-extrabold uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 mb-3">
@@ -420,25 +482,34 @@ export default function Home() {
             {services.map((item, idx) => (
               <div
                 key={idx}
-                className="bg-slate-900/70 hover:bg-slate-850/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group"
+                className="bg-slate-900/70 hover:bg-slate-850/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group flex flex-col justify-between"
               >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-900/40 to-slate-900 border border-slate-700 group-hover:border-amber-400/50 flex items-center justify-center mb-5 transition-colors">
-                  {item.icon}
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-900/40 to-slate-900 border border-slate-700 group-hover:border-amber-400/50 flex items-center justify-center transition-colors">
+                      {item.icon}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">
+                      {item.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-300 transition-colors heading-font">
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    {item.desc}
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-300 transition-colors heading-font">
-                  {item.title}
-                </h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                  {item.desc}
-                </p>
+
                 <button
                   onClick={() => {
+                    setFormData({ ...formData, servicio: item.title });
                     setModalType("servicio");
                     setModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors pt-2 border-t border-slate-800/80"
                 >
-                  Consultar por este trabajo <ChevronRight className="w-3.5 h-3.5" />
+                  Pedir presupuesto para este servicio <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
@@ -447,7 +518,7 @@ export default function Home() {
       </section>
 
       {/* 5. WHY CHOOSE PFA ELECTRICIDAD SPA */}
-      <section className="py-20 bg-[#050B17] border-b border-slate-800/80">
+      <section className="py-20 bg-[#040814] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             
@@ -546,7 +617,7 @@ export default function Home() {
       </section>
 
       {/* 6. TESTIMONIALS */}
-      <section className="py-20 bg-[#070E21] border-b border-slate-800/80">
+      <section className="py-20 bg-[#060D21] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <span className="text-amber-400 text-xs font-extrabold uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
@@ -601,7 +672,7 @@ export default function Home() {
       </section>
 
       {/* 7. FOOTER */}
-      <footer className="bg-[#030712] py-12 border-t border-slate-800">
+      <footer className="bg-[#02050E] py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800/80">
             <div className="flex items-center gap-2.5">
@@ -617,22 +688,25 @@ export default function Home() {
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-amber-400" /> Santiago de Chile (Cobertura RM)
               </span>
-              <span className="flex items-center gap-1.5">
+              <a href="tel:+56961935547" className="flex items-center gap-1.5 text-amber-300 hover:text-amber-200">
                 <Phone className="w-3.5 h-3.5 text-amber-400" /> +56 9 6193 5547
-              </span>
+              </a>
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Certificados SEC
               </span>
+              <Link href="/admin/pedidos" className="flex items-center gap-1 text-slate-400 hover:text-amber-400 underline">
+                Panel de Administración
+              </Link>
             </div>
           </div>
 
           <div className="pt-6 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} PFA Electricidad SpA. Todos los derechos reservados. Servicios eléctricos garantizados bajo normativa SEC.
+            © {new Date().getFullYear()} PFA Electricidad SpA. Todos los derechos reservados. Servicios eléctricos garantizados bajo normativa SEC Santiago de Chile.
           </div>
         </div>
       </footer>
 
-      {/* 8. FLOATING FLOATER CARDS (WhatsApp & Asistente IA) */}
+      {/* 8. FLOATING BUTTONS (WhatsApp & Asistente IA) */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 pointer-events-auto">
         {/* ASISTENTE IA 24/7 FLOATING BADGE */}
         <button
@@ -652,7 +726,7 @@ export default function Home() {
           <Sparkles className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
         </button>
 
-        {/* WhatsApp Quick Button */}
+        {/* WhatsApp Quick Button directed to +56 9 6193 5547 */}
         <a
           href="https://wa.me/56961935547?text=Hola%20PFA%20Electricidad%20SpA,%20necesito%20asistencia%20inmediata"
           target="_blank"
@@ -680,7 +754,7 @@ export default function Home() {
                     En línea
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-400">Atención técnica 24/7</div>
+                <div className="text-[10px] text-slate-400">Atención técnica 24/7 (+56 9 6193 5547)</div>
               </div>
             </div>
             <button
@@ -732,7 +806,7 @@ export default function Home() {
 
       {/* 10. MODAL: SOLICITAR SERVICIO / VISITA TÉCNICA */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0B152B] border border-blue-500/30 rounded-2xl max-w-lg w-full p-6 relative shadow-2xl animate-in zoom-in-95">
             <button
               onClick={() => setModalOpen(false)}
@@ -750,64 +824,83 @@ export default function Home() {
                   {modalType === "servicio" ? "Solicitar Servicio Eléctrico" : "Agendar Visita Técnica SEC"}
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Respuesta inmediata por electricista de turno
+                  Llega directo al WhatsApp +56 9 6193 5547 y se registra en tu panel
                 </p>
               </div>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setModalOpen(false);
-                handleHeroSubmit(e);
-              }}
-              className="space-y-3.5 text-xs"
-            >
+            <form onSubmit={handleHeroSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Nombre y Apellido</label>
+                <label className="block text-slate-300 font-medium mb-1">Nombre Completo *</label>
                 <input
                   type="text"
                   required
                   placeholder="Tu nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Teléfono o WhatsApp</label>
+                <label className="block text-slate-300 font-medium mb-1">Teléfono o WhatsApp *</label>
                 <input
                   type="tel"
                   required
-                  placeholder="+56 9 ..."
+                  placeholder="+56 9 1234 5678"
                   value={formData.telefono}
                   onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Comuna en Santiago</label>
+                  <select
+                    value={formData.comuna}
+                    onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
+                  >
+                    {comunas.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Tipo de Propiedad</label>
+                  <select
+                    value={formData.tipoPropiedad}
+                    onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="Residencial">Residencial / Casa</option>
+                    <option value="Departamento">Departamento</option>
+                    <option value="Comercial">Local / Comercial</option>
+                    <option value="Industrial">Industrial / Bodega</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Servicio Solicitado</label>
+                <input
+                  type="text"
+                  value={formData.servicio}
+                  onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Comuna en Santiago</label>
-                <select
-                  value={formData.comuna}
-                  onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"
-                >
-                  {comunas.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Motivo / Requerimiento</label>
+                <label className="block text-slate-300 font-medium mb-1">Motivo o Descripción Breve</label>
                 <textarea
                   rows={2}
-                  placeholder="Describe brevemente el problema o requerimiento..."
+                  placeholder="Detalla lo que necesitas resolver..."
                   value={formData.mensaje}
                   onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -821,10 +914,11 @@ export default function Home() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-1.5"
+                  disabled={createOrderMutation.isPending}
+                  className="flex-1 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  Confirmar y Contactar
+                  {createOrderMutation.isPending ? "Registrando..." : "Confirmar y Enviar"}
                 </button>
               </div>
             </form>
