@@ -253,9 +253,6 @@ INFORMACIÓN VERIFICADA DE PFA:
           `Tipo de propiedad: ${input.tipoPropiedad || "Residencial"}`,
           `Urgencia: ${input.urgencia || "Normal"}`,
           `Detalle: ${input.mensaje || "Sin detalle adicional"}`,
-          "------------------------------",
-          "Solicitud registrada en el Panel Admin de PFA Electricidad.",
-          `Numero de recepcion: ${DESTINATION_PHONE}`,
         ].join("\n");
 
         const whatsappUrl = `https://wa.me/${DESTINATION_DIGITS}?text=${encodeURIComponent(message)}`;
