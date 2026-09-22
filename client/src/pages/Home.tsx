@@ -6,7 +6,7 @@ import {
   Zap,
   Bot,
   FileCheck2,
-  Clock,
+  Clock3,
   MapPin,
   CheckCircle2,
   AlertTriangle,
@@ -20,32 +20,36 @@ import {
   Cpu,
   Star,
   BarChart2,
-  Check,
-  Layers,
+  ArrowUpRight,
+  ArrowRight,
+  Menu,
   Wrench,
-  Flame,
-  ArrowRight
+  Layers,
+  CircleCheck,
+  BadgeCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
+const WHATSAPP_NUMBER = "56961935547";
+const DISPLAY_PHONE = "+56 9 6193 5547";
+
+const comunas = [
+  "Las Condes", "Vitacura", "Lo Barnechea", "Providencia", "Ñuñoa",
+  "Santiago Centro", "La Reina", "Peñalolén", "Macul", "San Miguel",
+  "Maipú", "La Florida", "Huechuraba", "Colina / Chicureo", "Lampa", "Otras Comunas RM"
+];
+
 export default function Home() {
-  // Modal / drawer state for "Solicitar Servicio" and "Visita Técnica"
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"servicio" | "visita">("servicio");
-
-  // Chatbot state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: "bot" | "user"; text: string }>>([
-    {
-      sender: "bot",
-      text: "¡Hola! Soy el Asistente IA 24/7 de PFA Electricidad SpA. ¿En qué comuna de Santiago necesitas atención o qué problema eléctrico tienes?"
-    }
-  ]);
   const [chatInput, setChatInput] = useState("");
-
-  // Lead Form state
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: "bot" | "user"; text: string }>>([
+    { sender: "bot", text: "¡Hola! Soy el asistente de PFA Electricidad. ¿Qué necesitas resolver hoy?" }
+  ]);
   const [formData, setFormData] = useState({
     nombre: "",
     telefono: "",
@@ -58,874 +62,211 @@ export default function Home() {
 
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (data) => {
-      toast.success("¡Solicitud registrada en el panel con éxito!");
-      // Open WhatsApp to +56 9 6193 5547 with full details
-      if (data.whatsappUrl) {
-        window.open(data.whatsappUrl, "_blank");
-      }
+      toast.success("Solicitud registrada. Abriendo WhatsApp con el detalle completo.");
+      if (data.whatsappUrl) window.open(data.whatsappUrl, "_blank");
       setModalOpen(false);
-      setFormData({
-        nombre: "",
-        telefono: "",
-        comuna: "Las Condes",
-        servicio: "Reparación Urgente / Emergencia",
-        tipoPropiedad: "Residencial",
-        urgencia: "Inmediata (Hoy)",
-        mensaje: ""
-      });
+      setFormData({ nombre: "", telefono: "", comuna: "Las Condes", servicio: "Reparación Urgente / Emergencia", tipoPropiedad: "Residencial", urgencia: "Inmediata (Hoy)", mensaje: "" });
     },
-    onError: (err) => {
-      toast.error(`Error al registrar solicitud: ${err.message}`);
-    }
+    onError: (error) => toast.error(`No se pudo registrar la solicitud: ${error.message}`)
   });
 
-  const handleHeroSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.nombre.trim() || !formData.telefono.trim()) {
-      toast.error("Por favor completa tu nombre y teléfono.");
-      return;
-    }
-
-    createOrderMutation.mutate({
-      nombre: formData.nombre.trim(),
-      telefono: formData.telefono.trim(),
-      comuna: formData.comuna,
-      servicio: formData.servicio,
-      tipoPropiedad: formData.tipoPropiedad,
-      urgencia: formData.urgencia,
-      mensaje: formData.mensaje.trim()
-    });
+  const openServiceModal = (service?: string, type: "servicio" | "visita" = "servicio") => {
+    if (service) setFormData((prev) => ({ ...prev, servicio: service }));
+    setModalType(type);
+    setModalOpen(true);
   };
 
-  const handleChatSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!formData.nombre.trim() || !formData.telefono.trim()) {
+      toast.error("Completa tu nombre y teléfono para continuar.");
+      return;
+    }
+    createOrderMutation.mutate({ ...formData, nombre: formData.nombre.trim(), telefono: formData.telefono.trim(), mensaje: formData.mensaje.trim() });
+  };
 
-    const userText = chatInput.trim();
-    setChatMessages((prev) => [...prev, { sender: "user", text: userText }]);
+  const handleChatSend = (event: React.FormEvent) => {
+    event.preventDefault();
+    const message = chatInput.trim();
+    if (!message) return;
+    setChatMessages((prev) => [...prev, { sender: "user", text: message }]);
     setChatInput("");
-
-    setTimeout(() => {
-      let botReply =
-        "Contamos con electricistas certificados SEC para toda la Región Metropolitana. ¿Deseas agendar visita técnica o necesitas contacto directo al +56 9 6193 5547?";
-      const lower = userText.toLowerCase();
-      if (lower.includes("precio") || lower.includes("cuanto") || lower.includes("costo") || lower.includes("tarifa")) {
-        botReply =
-          "Nuestros presupuestos son claros y detallados. Las revisiones de urgencia o inspecciones parten desde una tarifa base deducible de la reparación final. ¿Para qué comuna sería?";
-      } else if (lower.includes("urgencia") || lower.includes("emergencia") || lower.includes("corte") || lower.includes("fuego") || lower.includes("humo")) {
-        botReply =
-          "🚨 ¡Emergencia detectada! Te recomendamos cortar el automático general y comunicarte directamente al teléfono +56 9 6193 5547 para despachar al móvil de turno.";
-      } else if (lower.includes("sec") || lower.includes("te1") || lower.includes("certificacion") || lower.includes("enel")) {
-        botReply =
-          "Gestionamos declaraciones TE1 oficiales ante la SEC para viviendas, edificios comerciales e industrias. Todos nuestros técnicos cuentan con credencial SEC vigente.";
-      }
-
-      setChatMessages((prev) => [...prev, { sender: "bot", text: botReply }]);
-    }, 600);
+    window.setTimeout(() => {
+      const normalized = message.toLowerCase();
+      let reply = `Podemos ayudarte en toda la Región Metropolitana. Si quieres una respuesta inmediata, llama al ${DISPLAY_PHONE}.`;
+      if (normalized.includes("precio") || normalized.includes("costo") || normalized.includes("valor")) reply = "Entregamos presupuestos claros después de revisar el alcance. Puedes solicitar una visita técnica y te contactamos por WhatsApp.";
+      if (normalized.includes("urgencia") || normalized.includes("corte") || normalized.includes("humo")) reply = `Si hay humo, chispas o riesgo, corta el automático general y llama de inmediato al ${DISPLAY_PHONE}.`;
+      if (normalized.includes("sec") || normalized.includes("te1")) reply = "Gestionamos declaraciones TE1 y regularizaciones con instaladores certificados SEC. Completa el formulario y te contactamos.";
+      setChatMessages((prev) => [...prev, { sender: "bot", text: reply }]);
+    }, 450);
   };
 
   const services = [
-    {
-      icon: <Building2 className="w-7 h-7 text-amber-400" />,
-      title: "Instalaciones Residenciales y Comerciales",
-      badge: "Norma RIC 2026",
-      desc: "Diseño y montaje completo desde la acometida hasta circuitos de fuerza, iluminación y enchufes para locales y viviendas."
-    },
-    {
-      icon: <FileCheck2 className="w-7 h-7 text-amber-400" />,
-      title: "Certificación y Declaración SEC (TE1)",
-      badge: "Oficial SEC",
-      desc: "Trámite de planos y carpetas técnicas garantizadas ante la SEC para empalmes definitivos, aumentos de potencia y patentes."
-    },
-    {
-      icon: <Cpu className="w-7 h-7 text-amber-400" />,
-      title: "Renovación y Normalización de Tableros",
-      badge: "Seguridad Total",
-      desc: "Reemplazo de protecciones obsoletas, montaje de interruptores termomagnéticos y diferenciales tipo A para prevenir incendios."
-    },
-    {
-      icon: <Car className="w-7 h-7 text-amber-400" />,
-      title: "Cargadores para Vehículos Eléctricos (EV)",
-      badge: "Electromovilidad",
-      desc: "Instalación certificada de cargadores tipo Wallbox residenciales y flotas corporativas con tablero y protecciones dedicadas."
-    },
-    {
-      icon: <Lightbulb className="w-7 h-7 text-amber-400" />,
-      title: "Iluminación LED y Ahorro Energético",
-      badge: "Alta Eficiencia",
-      desc: "Proyectos de reconversión lumínica para galpones, estacionamientos y oficinas con hasta 65% de ahorro en consumo eléctrico."
-    },
-    {
-      icon: <AlertTriangle className="w-7 h-7 text-amber-400" />,
-      title: "Servicio de Urgencias Eléctricas 24/7",
-      badge: "Respuesta Rápida",
-      desc: "Atención prioritaria de cortocircuitos, caídas de fase, automáticos trabados y reposición segura de energía en Santiago."
-    }
-  ];
-
-  const comunas = [
-    "Las Condes", "Vitacura", "Lo Barnechea", "Providencia", "Ñuñoa", 
-    "Santiago Centro", "La Reina", "Peñalolén", "Macul", "San Miguel", 
-    "Maipú", "La Florida", "Huechuraba", "Colina / Chicureo", "Lampa", "Otras Comunas RM"
+    { icon: <Building2 />, title: "Instalaciones eléctricas", label: "Residencial y comercial", description: "Montajes, ampliaciones y circuitos completos con terminaciones limpias y seguras." },
+    { icon: <FileCheck2 />, title: "Certificación SEC", label: "TE1 y regularizaciones", description: "Carpetas técnicas y declaraciones para empalmes, ventas, patentes y aumentos de potencia." },
+    { icon: <Cpu />, title: "Tableros eléctricos", label: "Normalización y protección", description: "Renovación de protecciones, diferenciales y distribución para reducir riesgos y fallas." },
+    { icon: <Car />, title: "Cargadores EV", label: "Electromovilidad", description: "Instalación de Wallbox para hogares, estacionamientos y flotas con circuito dedicado." },
+    { icon: <Lightbulb />, title: "Iluminación LED", label: "Ahorro energético", description: "Proyectos de iluminación eficiente para hogares, oficinas, locales, bodegas y exteriores." },
+    { icon: <AlertTriangle />, title: "Urgencias 24/7", label: "Respuesta prioritaria", description: "Cortocircuitos, cortes, recalentamientos y fallas eléctricas atendidas con rapidez." }
   ];
 
   return (
-    <div className="min-h-screen bg-[#040814] text-slate-100 flex flex-col font-sans relative selection:bg-amber-400 selection:text-slate-900 pb-24 sm:pb-0">
-      
-      {/* 1. TOP ANNOUNCEMENT BAR */}
-      <div className="bg-[#091226] border-b border-amber-500/25 text-xs sm:text-sm py-2 px-4 relative z-50">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <span className="bg-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded text-[11px] uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
-              <Zap className="w-3.5 h-3.5 fill-current" /> ATENCIÓN PROFESIONAL
+    <div className="min-h-screen bg-[#050814] text-slate-100 font-sans selection:bg-amber-400 selection:text-slate-950 pb-24 sm:pb-0">
+      {/* Top utility strip */}
+      <div className="relative z-50 border-b border-white/10 bg-[#090F20]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-2.5 text-center text-xs sm:flex-row sm:text-left">
+          <div className="flex items-center gap-2 text-slate-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-950">
+              <Zap className="h-3 w-3 fill-current" /> Atención profesional
             </span>
-            <span className="text-amber-100/90 font-medium">
-              Instalaciones y Servicios Garantizados SEC Santiago de Chile
-            </span>
+            <span className="hidden sm:inline">Servicios eléctricos garantizados en Santiago de Chile</span>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/pedidos"
-              className="text-slate-300 hover:text-amber-400 text-xs font-semibold flex items-center gap-1 bg-slate-900/80 px-2.5 py-0.5 rounded border border-slate-700 hover:border-amber-500/40 transition"
-            >
-              <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              Panel de Pedidos & Estadísticas
-            </Link>
-
-            <a
-              href="tel:+56961935547"
-              className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-bold transition-colors bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 text-xs"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              +56 9 6193 5547
-            </a>
-          </div>
+          <a href={`tel:+${WHATSAPP_NUMBER}`} className="inline-flex items-center gap-1.5 font-bold text-amber-300 transition hover:text-amber-200">
+            <Phone className="h-3.5 w-3.5" /> {DISPLAY_PHONE}
+          </a>
         </div>
       </div>
 
-      {/* 2. MAIN HEADER */}
-      <header className="sticky top-0 z-40 bg-[#050C1F]/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-          
-          {/* Logo Brand matching exact reference */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center gap-2.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-700 via-blue-900 to-slate-950 border border-blue-400/40 p-1 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.35)]">
-                <div className="w-full h-full rounded-lg border border-amber-400/50 flex items-center justify-center bg-black/40 relative">
-                  <Zap className="w-6 h-6 text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-white heading-font">
-                    PFA
-                  </span>
-                  <span className="text-[11px] uppercase font-extrabold tracking-wider bg-amber-500/15 border border-amber-500/40 text-amber-400 px-2 py-0.5 rounded">
-                    ELECTRICIDAD SPA
-                  </span>
-                </div>
-                <span className="text-[11px] text-slate-400 font-medium tracking-tight">
-                  Instalaciones • Obras • Certificación SEC Santiago de Chile
-                </span>
-              </div>
-            </div>
+      {/* Main navigation */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050814]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-3" aria-label="PFA Electricidad inicio">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 shadow-[0_10px_30px_rgba(245,158,11,.2)]">
+              <Zap className="h-6 w-6 fill-current" />
+            </span>
+            <span className="leading-none">
+              <span className="heading-font block text-2xl font-bold tracking-tight text-white">PFA <em className="not-italic text-amber-400">Electricidad</em></span>
+              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Instalaciones • Obras • SEC</span>
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegación principal">
+            <a href="#servicios" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Servicios</a>
+            <a href="#confianza" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Por qué PFA</a>
+            <a href="#contacto" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Contacto</a>
+            <Link href="/admin/pedidos" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-300 transition hover:text-amber-300"><BarChart2 className="h-4 w-4 text-amber-400" /> Panel</Link>
+          </nav>
+
+          <div className="hidden items-center gap-2 sm:flex">
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola%20PFA%20Electricidad,%20necesito%20ayuda`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-2.5 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/25"><MessageSquare className="h-4 w-4" /> WhatsApp</a>
+            <button onClick={() => openServiceModal()} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-black text-slate-950 shadow-[0_8px_24px_rgba(245,158,11,.2)] transition hover:bg-amber-300 active:scale-[.98]"><ShieldCheck className="h-4 w-4" /> Solicitar servicio</button>
           </div>
 
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/pedidos"
-              className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-900/90 border border-slate-700 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow"
-            >
-              <BarChart2 className="w-4 h-4 text-amber-400" />
-              Ver Pedidos
-            </Link>
-
-            <a
-              href="https://wa.me/56961935547?text=Hola%20PFA%20Electricidad%20SpA,%20necesito%20asistencia%20el%C3%A9ctrica%20en%20Santiago"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 bg-[#00a884] hover:bg-[#009273] text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md hover:shadow-[#00a884]/20 hover:scale-[1.02] active:scale-[0.98] text-sm"
-            >
-              <MessageSquare className="w-4 h-4 fill-current" />
-              WhatsApp
-            </a>
-
-            <button
-              onClick={() => {
-                setModalType("servicio");
-                setModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold px-3.5 sm:px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] text-xs sm:text-sm tracking-wide uppercase border border-amber-300/40"
-            >
-              <ShieldCheck className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-              <span className="hidden sm:inline">SOLICITAR SERVICIO</span>
-              <span className="sm:hidden">SOLICITAR</span>
-            </button>
-          </div>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-200 sm:hidden" aria-label="Abrir menú">
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+        {mobileMenuOpen && <div className="border-t border-white/10 bg-[#080D1C] px-4 py-4 sm:hidden">
+          <div className="flex flex-col gap-3 text-sm font-semibold text-slate-300">
+            <a href="#servicios" onClick={() => setMobileMenuOpen(false)}>Servicios</a>
+            <a href="#confianza" onClick={() => setMobileMenuOpen(false)}>Por qué PFA</a>
+            <Link href="/admin/pedidos">Panel de pedidos</Link>
+            <button onClick={() => { setMobileMenuOpen(false); openServiceModal(); }} className="mt-2 rounded-xl bg-amber-400 px-4 py-3 text-left font-black text-slate-950">Solicitar servicio</button>
+          </div>
+        </div>}
       </header>
 
-      {/* 3. HERO SECTION */}
-      <section className="relative pt-10 pb-16 md:pt-16 md:pb-24 overflow-hidden border-b border-slate-800/60">
-        
-        {/* Glow ambient background lights */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[140px] pointer-events-none rounded-full" />
-        <div className="absolute top-1/3 right-10 w-[450px] h-[350px] bg-amber-500/10 blur-[130px] pointer-events-none rounded-full" />
+      {/* Hero */}
+      <main>
+        <section className="relative isolate overflow-hidden border-b border-white/10">
+          <div className="hero-grid absolute inset-0 opacity-50" />
+          <div className="noise-overlay absolute inset-0" />
+          <div className="absolute -left-32 top-12 h-96 w-96 rounded-full bg-blue-600/15 blur-[120px]" />
+          <div className="absolute -right-20 top-0 h-[34rem] w-[34rem] rounded-full bg-amber-500/10 blur-[130px]" />
+          <div className="relative mx-auto grid max-w-7xl gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-20 lg:pb-28 lg:pt-24">
+            <div className="animate-float-in">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-2 text-xs font-bold text-amber-200"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Electricistas certificados SEC · Respuesta 24/7</div>
+              <h1 className="heading-font max-w-3xl text-5xl font-bold leading-[.98] tracking-[-.055em] text-white sm:text-6xl lg:text-[76px]">Electricidad bien hecha.<br /><span className="text-amber-400">Sin sorpresas.</span></h1>
+              <p className="mt-7 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">Instalaciones, reparaciones y certificaciones para hogares, comercios e industrias en Santiago. Diagnóstico claro, trabajo seguro y respaldo profesional.</p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <button onClick={() => openServiceModal()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3.5 text-sm font-black text-slate-950 shadow-[0_15px_35px_rgba(245,158,11,.25)] transition hover:-translate-y-0.5 hover:bg-amber-300"><Wrench className="h-4 w-4" /> Solicitar visita técnica <ArrowRight className="h-4 w-4" /></button>
+                <a href={`tel:+${WHATSAPP_NUMBER}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-bold text-white transition hover:border-amber-300/50 hover:bg-white/10"><Phone className="h-4 w-4 text-amber-300" /> Llamar ahora</a>
+              </div>
+              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-slate-400">
+                <span className="inline-flex items-center gap-2"><CircleCheck className="h-4 w-4 text-emerald-400" /> Presupuesto claro</span>
+                <span className="inline-flex items-center gap-2"><CircleCheck className="h-4 w-4 text-emerald-400" /> Garantía post-servicio</span>
+                <span className="inline-flex items-center gap-2"><CircleCheck className="h-4 w-4 text-emerald-400" /> Atención directa</span>
+              </div>
+            </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          
-          {/* Top Pill / Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 bg-slate-900/90 border border-amber-500/40 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
-              <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span>Electricistas Matriculados SEC • Chatbot & Asistencia IA 24/7</span>
+            <div className="relative animate-float-in lg:pt-4">
+              <div className="absolute -inset-8 rounded-[2.5rem] bg-blue-500/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-[#0B1428]/90 p-5 shadow-[0_25px_100px_rgba(0,0,0,.4)] sm:p-7">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div><p className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Atención inmediata</p><h2 className="heading-font mt-2 text-2xl font-bold text-white">Cuéntanos qué necesitas</h2><p className="mt-1 text-sm text-slate-400">Te contactamos por WhatsApp con la información completa.</p></div>
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-amber-300"><Zap className="h-5 w-5 fill-current" /></div>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} placeholder="Nombre completo *" className="field" />
+                    <input required type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} placeholder="Teléfono / WhatsApp *" className="field" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <select value={formData.comuna} onChange={(e) => setFormData({ ...formData, comuna: e.target.value })} className="field">{comunas.map((item) => <option key={item}>{item}</option>)}</select>
+                    <select value={formData.servicio} onChange={(e) => setFormData({ ...formData, servicio: e.target.value })} className="field"><option>Reparación Urgente / Emergencia</option><option>Renovación de Tablero</option><option>Certificación SEC / TE1</option><option>Instalación Cargador EV</option><option>Instalación Eléctrica Completa</option><option>Iluminación LED</option></select>
+                  </div>
+                  <textarea rows={3} value={formData.mensaje} onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })} placeholder="Describe brevemente el problema o proyecto" className="field resize-none" />
+                  <button disabled={createOrderMutation.isPending} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-sm font-black text-white transition hover:bg-emerald-400 disabled:opacity-60">{createOrderMutation.isPending ? "Registrando solicitud..." : <>Enviar solicitud por WhatsApp <ArrowUpRight className="h-4 w-4" /></>}</button>
+                  <p className="text-center text-[11px] text-slate-500">La solicitud queda registrada en el panel y se prepara para el número {DISPLAY_PHONE}.</p>
+                </form>
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Main Headline */}
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight heading-font leading-[1.1] mb-6 drop-shadow-md">
-              Soluciones Eléctricas Rápidas, Seguras y Garantizadas
-            </h1>
+        {/* Trust rail */}
+        <section className="border-b border-white/10 bg-[#071021]">
+          <div className="mx-auto grid max-w-7xl gap-0 px-4 sm:grid-cols-3 sm:px-6">
+            {[
+              [<BadgeCheck className="h-5 w-5" />, "Instaladores certificados", "Trabajo bajo normativa SEC"],
+              [<Clock3 className="h-5 w-5" />, "Respuesta prioritaria", "Atención coordinada 24/7"],
+              [<ShieldCheck className="h-5 w-5" />, "Garantía y respaldo", "Transparencia en cada paso"]
+            ].map(([icon, title, description], index) => <div key={index} className="flex items-center gap-3 border-b border-white/10 py-5 sm:border-b-0 sm:border-r sm:px-8 sm:first:pl-0 sm:last:border-r-0"><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-300">{icon}</span><span><strong className="block text-sm text-white">{title}</strong><small className="mt-1 block text-xs text-slate-500">{description}</small></span></div>)}
+          </div>
+        </section>
 
-            <p className="text-slate-300 text-base sm:text-lg md:text-xl font-normal leading-relaxed max-w-3xl mx-auto mb-8">
-              Atención residencial, comercial e industrial por <strong className="text-white font-semibold">PFA Electricidad SpA</strong>. Realizamos renovaciones de tableros, instalaciones eléctricas, cargadores EV, iluminación LED y emitimos informes garantizados SEC en Santiago de Chile.
-            </p>
+        {/* Services */}
+        <section id="servicios" className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+          <div className="mb-12 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Lo que hacemos</p><h2 className="heading-font mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">Un equipo para cada<br /><span className="text-slate-500">problema eléctrico.</span></h2></div><p className="max-w-sm text-sm leading-6 text-slate-400">Soluciones pensadas para que entiendas el trabajo, apruebes con confianza y recibas un resultado que dura.</p></div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {services.map((service) => <article key={service.title} className="group rounded-2xl border border-white/10 bg-white/[.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:bg-amber-300/[.045] hover:shadow-[0_18px_50px_rgba(0,0,0,.22)]"><div className="mb-8 flex items-start justify-between"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-300 [&>svg]:h-6 [&>svg]:w-6">{service.icon}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{service.label}</span></div><h3 className="heading-font text-xl font-bold text-white transition group-hover:text-amber-200">{service.title}</h3><p className="mt-3 min-h-[48px] text-sm leading-6 text-slate-400">{service.description}</p><button onClick={() => openServiceModal(service.title)} className="mt-6 inline-flex items-center gap-1.5 text-xs font-black text-amber-300 transition hover:gap-2.5">Solicitar este servicio <ChevronRight className="h-3.5 w-3.5" /></button></article>)}
+          </div>
+        </section>
 
-            {/* Checkpoints row */}
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-10 text-xs sm:text-sm text-slate-200 font-medium">
-              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Matriculados Oficiales</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Bot IA 24/7 Activo</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Presupuesto Claro</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-900/70 px-3.5 py-1.5 rounded-full border border-slate-800 text-amber-300">
-                <Phone className="w-3.5 h-3.5 text-amber-400" />
-                <span>WhatsApp: +56 9 6193 5547</span>
-              </div>
-            </div>
-
-            {/* Primary Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md sm:max-w-none mx-auto mb-14">
-              <a
-                href="tel:+56961935547"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black px-7 py-4 rounded-xl text-base shadow-[0_10px_25px_rgba(245,158,11,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] border border-amber-300/60"
-              >
-                <Phone className="w-5 h-5 fill-slate-950" />
-                LLAMAR AHORA (+56 9 6193 5547)
-              </a>
-
-              <button
-                onClick={() => {
-                  setModalType("visita");
-                  setModalOpen(true);
-                }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-slate-900/90 hover:bg-slate-800/90 text-white font-bold px-7 py-4 rounded-xl text-base border border-slate-700/80 shadow-md transition-all hover:border-amber-400/50 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <ShieldCheck className="w-5 h-5 text-amber-400" />
-                Solicitar Visita Técnica
-              </button>
+        {/* Why us */}
+        <section id="confianza" className="border-y border-white/10 bg-[#071021]">
+          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+            <div><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Por qué PFA</p><h2 className="heading-font mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">Profesionalidad que se nota desde la primera visita.</h2><p className="mt-6 max-w-xl text-base leading-7 text-slate-400">No solo resolvemos la falla. Te explicamos qué ocurre, qué hay que hacer y cómo mantener tu instalación segura después del trabajo.</p><button onClick={() => openServiceModal(undefined, "visita")} className="mt-8 inline-flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm font-black text-amber-200 transition hover:bg-amber-300/20">Agendar diagnóstico <ArrowRight className="h-4 w-4" /></button></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[{ title: "Diagnóstico claro", body: "Te mostramos el origen del problema y las alternativas antes de comenzar.", icon: <Wrench /> }, { title: "Terminaciones limpias", body: "Orden, rotulación y materiales adecuados en cada intervención.", icon: <Layers /> }, { title: "Respaldo SEC", body: "Trabajos y declaraciones con profesionales autorizados.", icon: <BadgeCheck /> }, { title: "Seguimiento real", body: "Cada solicitud queda registrada para que no se pierda ningún detalle.", icon: <CheckCircle2 /> }].map((item) => <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/15 text-blue-300 [&>svg]:h-5 [&>svg]:w-5">{item.icon}</span><h3 className="mt-5 text-base font-bold text-white">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{item.body}</p></div>)}
             </div>
           </div>
+        </section>
 
-          {/* HERO BOTTOM FORM CARD: "Para Hacer Tu Proyecto" */}
-          <div className="max-w-4xl mx-auto bg-gradient-to-b from-[#0B152B] to-[#070D1D] rounded-2xl border border-blue-500/25 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.6)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-amber-400 to-blue-600" />
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-800">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Zap className="w-6 h-6 fill-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white heading-font">
-                    Para Hacer Tu Proyecto
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-400">
-                    Completa tus datos: se guarda en el panel administrativo y te redirige a WhatsApp al +56 9 6193 5547
-                  </p>
-                </div>
-              </div>
-
-              <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full text-xs font-semibold self-start sm:self-auto">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Registro Inmediato
-              </div>
-            </div>
-
-            <form onSubmit={handleHeroSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Rodrigo Morales"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Teléfono / WhatsApp *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+56 9 1234 5678"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Comuna de Santiago
-                  </label>
-                  <select
-                    value={formData.comuna}
-                    onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
-                    className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                  >
-                    {comunas.map((c) => (
-                      <option key={c} value={c} className="bg-slate-900 text-white">
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-1">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Servicio Requerido
-                  </label>
-                  <select
-                    value={formData.servicio}
-                    onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
-                    className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                  >
-                    <option value="Reparación Urgente / Emergencia">Reparación Urgente 24/7</option>
-                    <option value="Renovación de Tablero">Renovación de Tablero Eléctrico</option>
-                    <option value="Certificación SEC / TE1">Certificación SEC (TE1)</option>
-                    <option value="Instalación Cargador EV">Instalación Cargador Vehículo Eléctrico</option>
-                    <option value="Instalación Eléctrica Completa">Instalación Eléctrica Completa</option>
-                    <option value="Iluminación LED">Iluminación LED Comercial/Hogar</option>
-                  </select>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Detalle del Requerimiento / Problema Eléctrico
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Salta el automático general / Necesito regularizar para venta"
-                    value={formData.mensaje}
-                    onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
-                    className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  Presupuestos transparentes sin compromiso de compra
-                </span>
-
-                <button
-                  type="submit"
-                  disabled={createOrderMutation.isPending}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#00a884] hover:bg-[#009273] disabled:opacity-50 text-white font-extrabold px-6 py-3 rounded-xl transition shadow-lg hover:shadow-[#00a884]/20 hover:scale-[1.01] active:scale-[0.99] text-sm"
-                >
-                  <Send className="w-4 h-4" />
-                  {createOrderMutation.isPending ? "Guardando..." : "Enviar a WhatsApp Directo (+56 9 6193 5547)"}
-                </button>
-              </div>
-            </form>
+        {/* Testimonial / CTA */}
+        <section id="contacto" className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+          <div className="grid overflow-hidden rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-amber-400/[.14] via-[#111C36] to-[#0B1328] lg:grid-cols-[1fr_.8fr]">
+            <div className="p-8 sm:p-12"><div className="flex gap-1 text-amber-300">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}</div><blockquote className="heading-font mt-6 max-w-2xl text-3xl font-bold leading-tight text-white sm:text-4xl">“Trabajaron rápido, explicaron todo y dejaron el tablero impecable.”</blockquote><p className="mt-5 text-sm text-slate-400">Carolina Méndez · Las Condes</p></div>
+            <div className="border-t border-white/10 bg-black/15 p-8 sm:p-12 lg:border-l lg:border-t-0"><p className="text-xs font-black uppercase tracking-[.18em] text-amber-300">¿Tienes una falla?</p><h3 className="heading-font mt-3 text-2xl font-bold text-white">Hablemos hoy.</h3><p className="mt-3 text-sm leading-6 text-slate-400">Recibe atención directa en el número oficial de PFA Electricidad.</p><a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola%20PFA%20Electricidad,%20quiero%20solicitar%20un%20servicio`} target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-400">Escribir por WhatsApp <ArrowUpRight className="h-4 w-4" /></a><p className="mt-4 text-xs text-slate-500">{DISPLAY_PHONE} · Santiago y Región Metropolitana</p></div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* 4. SERVICES SECTION */}
-      <section className="py-20 bg-[#060D21] border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-1.5 text-amber-400 text-xs font-extrabold uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 mb-3">
-              Servicios Especializados
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white heading-font">
-              Soluciones Eléctricas Integrales en Santiago
-            </h2>
-            <p className="mt-3 text-slate-300 text-sm sm:text-base">
-              Cumplimos estrictamente los pliegos técnicos RIC de la SEC para garantizar la seguridad de tu familia, colaboradores y patrimonio.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((item, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-900/70 hover:bg-slate-850/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-900/40 to-slate-900 border border-slate-700 group-hover:border-amber-400/50 flex items-center justify-center transition-colors">
-                      {item.icon}
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">
-                      {item.badge}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-300 transition-colors heading-font">
-                    {item.title}
-                  </h3>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    {item.desc}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setFormData({ ...formData, servicio: item.title });
-                    setModalType("servicio");
-                    setModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors pt-2 border-t border-slate-800/80"
-                >
-                  Pedir presupuesto para este servicio <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. WHY CHOOSE PFA ELECTRICIDAD SPA */}
-      <section className="py-20 bg-[#040814] border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
-            {/* Left Column: Advantages */}
-            <div>
-              <span className="text-amber-400 text-xs font-extrabold uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                Garantía y Tranquilidad
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-4 mb-6 heading-font leading-tight">
-                ¿Por qué confiar en PFA Electricidad SpA?
-              </h2>
-              <p className="text-slate-300 text-base leading-relaxed mb-8">
-                Una mala conexión eléctrica puede provocar accidentes graves, multas y pérdida de equipos valiosos. Trabajamos con estándares industriales aplicados al ámbito residencial y comercial en todo Santiago.
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 border border-amber-500/30">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white">Instaladores Matriculados SEC Clase A y B</h4>
-                    <p className="text-xs sm:text-sm text-slate-400">Firmas oficiales válidas para compañías eléctricas como Enel y CGE.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5 border border-blue-500/30">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white">Puntualidad y Respuesta Veloz</h4>
-                    <p className="text-xs sm:text-sm text-slate-400">Móviles equipados con instrumentación de diagnóstico rápido.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-500/30">
-                    <FileCheck2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white">Facturación y Garantía Post-Servicio</h4>
-                    <p className="text-xs sm:text-sm text-slate-400">Garantía por escrito sobre todas nuestras obras e instalaciones realizadas.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Highlight Card with Stats & Certifications */}
-            <div className="bg-gradient-to-br from-[#0c1836] to-[#080F21] p-8 rounded-3xl border border-blue-500/20 shadow-2xl relative">
-              <div className="grid grid-cols-2 gap-6 text-center mb-8">
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                  <div className="text-3xl sm:text-4xl font-extrabold text-amber-400 heading-font mb-1">
-                    100%
-                  </div>
-                  <div className="text-xs text-slate-400 font-medium">Norma SEC Aprobada</div>
-                </div>
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                  <div className="text-3xl sm:text-4xl font-extrabold text-white heading-font mb-1">
-                    +1.200
-                  </div>
-                  <div className="text-xs text-slate-400 font-medium">Proyectos Ejecutados</div>
-                </div>
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                  <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400 heading-font mb-1">
-                    24/7
-                  </div>
-                  <div className="text-xs text-slate-400 font-medium">Asistencia Emergencias</div>
-                </div>
-                <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                  <div className="text-3xl sm:text-4xl font-extrabold text-blue-400 heading-font mb-1">
-                    5.0 ★
-                  </div>
-                  <div className="text-xs text-slate-400 font-medium">Calificación Clientes</div>
-                </div>
-              </div>
-
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-                <p className="text-xs text-amber-200 font-medium mb-3">
-                  ¿Necesitas verificar el estado de tu instalación o tablero antes de que falle?
-                </p>
-                <button
-                  onClick={() => {
-                    setModalType("visita");
-                    setModalOpen(true);
-                  }}
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-5 py-2.5 rounded-lg text-xs uppercase tracking-wide transition shadow"
-                >
-                  Agendar Diagnóstico Técnico
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* 6. TESTIMONIALS */}
-      <section className="py-20 bg-[#060D21] border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-amber-400 text-xs font-extrabold uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-              Opiniones Reales
-            </span>
-            <h2 className="text-3xl font-extrabold text-white mt-3 heading-font">
-              Lo que dicen nuestros clientes en Santiago
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
-              <div className="flex items-center gap-1 text-amber-400 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400" />
-                ))}
-              </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                "Nos quedamos sin luz un domingo en la noche por un recalentamiento en el tablero general. Llegaron rápido a Las Condes, aislaron la falla y dejaron todo seguro. Totalmente recomendados."
-              </p>
-              <div className="text-xs font-semibold text-white">Carolina Méndez</div>
-              <div className="text-[11px] text-slate-400">Residencial, Las Condes</div>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
-              <div className="flex items-center gap-1 text-amber-400 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400" />
-                ))}
-              </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                "Excelente gestión para la tramitación del TE1 de nuestro local gastronómico en Providencia. Todo dentro del plazo comprometido y con la carpeta técnica impecable."
-              </p>
-              <div className="text-xs font-semibold text-white">Matías Valenzuela</div>
-              <div className="text-[11px] text-slate-400">Comercial, Providencia</div>
-            </div>
-
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
-              <div className="flex items-center gap-1 text-amber-400 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400" />
-                ))}
-              </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                "Instalaron el cargador de mi auto eléctrico en Chicureo. Muy prolijos con las canalizaciones y protecciones. Se nota el profesionalismo y conocimiento técnico."
-              </p>
-              <div className="text-xs font-semibold text-white">Felipe Echeverría</div>
-              <div className="text-[11px] text-slate-400">Cargador EV, Colina</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FOOTER */}
-      <footer className="bg-[#02050E] py-12 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
-              </div>
-              <div className="text-white font-black text-xl heading-font">
-                PFA ELECTRICIDAD SPA
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" /> Santiago de Chile (Cobertura RM)
-              </span>
-              <a href="tel:+56961935547" className="flex items-center gap-1.5 text-amber-300 hover:text-amber-200">
-                <Phone className="w-3.5 h-3.5 text-amber-400" /> +56 9 6193 5547
-              </a>
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Certificados SEC
-              </span>
-              <Link href="/admin/pedidos" className="flex items-center gap-1 text-slate-400 hover:text-amber-400 underline">
-                Panel de Administración
-              </Link>
-            </div>
-          </div>
-
-          <div className="pt-6 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} PFA Electricidad SpA. Todos los derechos reservados. Servicios eléctricos garantizados bajo normativa SEC Santiago de Chile.
-          </div>
-        </div>
+      <footer className="border-t border-white/10 bg-[#03050D]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Zap className="h-5 w-5 fill-current" /></span><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Santiago de Chile</span><Link href="/admin/pedidos" className="transition hover:text-amber-300">Panel de pedidos</Link></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
       </footer>
 
-      {/* 8. FLOATING BUTTONS (WhatsApp & Asistente IA) */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 pointer-events-auto">
-        {/* ASISTENTE IA 24/7 FLOATING BADGE */}
-        <button
-          onClick={() => setChatOpen(!chatOpen)}
-          className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-2xl shadow-[0_8px_25px_rgba(245,158,11,0.4)] flex items-center gap-2.5 transition-transform hover:scale-105 active:scale-95 border border-amber-300 cursor-pointer"
-        >
-          <div className="w-6 h-6 rounded-lg bg-slate-950/20 flex items-center justify-center">
-            <Bot className="w-3.5 h-3.5 text-slate-950" />
-          </div>
-          <div className="text-left leading-tight">
-            <div className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 animate-pulse" />
-              ASISTENTE IA <span className="bg-slate-950 text-amber-400 px-1 py-0.2 rounded text-[8px]">24/7</span>
-            </div>
-            <div className="text-[11px] font-black">Consultas & Emergencias</div>
-          </div>
-          <Sparkles className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
-        </button>
-
-        {/* WhatsApp Quick Button directed to +56 9 6193 5547 */}
-        <a
-          href="https://wa.me/56961935547?text=Hola%20PFA%20Electricidad%20SpA,%20necesito%20asistencia%20inmediata"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Contactar por WhatsApp"
-          className="w-13 h-13 rounded-full bg-[#00a884] hover:bg-[#009273] text-white flex items-center justify-center shadow-[0_10px_25px_rgba(0,168,132,0.4)] transition-transform hover:scale-110 active:scale-95"
-        >
-          <Phone className="w-6 h-6 fill-white" />
-        </a>
+      {/* Floating contact actions */}
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+        <button onClick={() => setChatOpen(!chatOpen)} className="group inline-flex items-center gap-2 rounded-2xl border border-amber-200/50 bg-amber-400 px-3.5 py-2.5 text-slate-950 shadow-[0_12px_35px_rgba(245,158,11,.32)] transition hover:-translate-y-0.5 hover:bg-amber-300"><span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-950/10"><Bot className="h-4 w-4" /></span><span className="text-left"><small className="block text-[9px] font-black uppercase tracking-widest">Asistente IA · 24/7</small><strong className="block text-xs">Consultas y emergencias</strong></span><Sparkles className="h-4 w-4 fill-current" /></button>
+        <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola%20PFA%20Electricidad,%20necesito%20asistencia`} target="_blank" rel="noreferrer" className="grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_12px_35px_rgba(16,185,129,.32)] transition hover:scale-105 hover:bg-emerald-400" aria-label="WhatsApp PFA Electricidad"><MessageSquare className="h-6 w-6 fill-current" /></a>
       </div>
 
-      {/* 9. CHATBOT POPUP MODAL */}
-      {chatOpen && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[380px] bg-slate-950 border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[460px] animate-in fade-in slide-in-from-bottom-5">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-950 to-slate-900 border-b border-slate-800 p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
-                <Bot className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  Asistente IA PFA
-                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/30">
-                    En línea
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400">Atención técnica 24/7 (+56 9 6193 5547)</div>
-              </div>
-            </div>
-            <button
-              onClick={() => setChatOpen(false)}
-              className="text-slate-400 hover:text-white p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Chat */}
+      {chatOpen && <div className="fixed bottom-24 right-4 z-50 flex h-[460px] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-amber-300/30 bg-[#080D1B] shadow-2xl"><div className="flex items-center justify-between border-b border-white/10 bg-[#101B34] p-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Bot className="h-5 w-5" /></span><span><strong className="block text-sm text-white">Asistente PFA</strong><small className="text-xs text-emerald-300">En línea · {DISPLAY_PHONE}</small></span></div><button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button></div><div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">{chatMessages.map((message, index) => <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}><span className={`max-w-[84%] rounded-2xl px-3 py-2.5 leading-5 ${message.sender === "user" ? "bg-amber-400 font-semibold text-slate-950" : "border border-white/10 bg-white/5 text-slate-200"}`}>{message.text}</span></div>)}</div><form onSubmit={handleChatSend} className="flex gap-2 border-t border-white/10 bg-[#0C1427] p-3"><input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Escribe tu consulta..." className="field flex-1" /><button className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400 text-slate-950"><Send className="h-4 w-4" /></button></form></div>}
 
-          {/* Messages */}
-          <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-[#050B17]/90 text-xs">
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[82%] rounded-xl px-3 py-2 leading-relaxed ${
-                    msg.sender === "user"
-                      ? "bg-amber-500 text-slate-950 font-medium"
-                      : "bg-slate-850 text-slate-200 border border-slate-700/80"
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer Input */}
-          <form onSubmit={handleChatSend} className="p-2.5 bg-slate-900 border-t border-slate-800 flex gap-2">
-            <input
-              type="text"
-              placeholder="Escribe tu consulta o comuna..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
-            />
-            <button
-              type="submit"
-              className="bg-amber-400 hover:bg-amber-300 text-slate-950 p-2 rounded-xl"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* 10. MODAL: SOLICITAR SERVICIO / VISITA TÉCNICA */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0B152B] border border-blue-500/30 rounded-2xl max-w-lg w-full p-6 relative shadow-2xl animate-in zoom-in-95">
-            <button
-              onClick={() => setModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white heading-font">
-                  {modalType === "servicio" ? "Solicitar Servicio Eléctrico" : "Agendar Visita Técnica SEC"}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Llega directo al WhatsApp +56 9 6193 5547 y se registra en tu panel
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleHeroSubmit} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Nombre Completo *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Tu nombre"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Teléfono o WhatsApp *</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="+56 9 1234 5678"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Comuna en Santiago</label>
-                  <select
-                    value={formData.comuna}
-                    onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {comunas.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Tipo de Propiedad</label>
-                  <select
-                    value={formData.tipoPropiedad}
-                    onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                  >
-                    <option value="Residencial">Residencial / Casa</option>
-                    <option value="Departamento">Departamento</option>
-                    <option value="Comercial">Local / Comercial</option>
-                    <option value="Industrial">Industrial / Bodega</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Servicio Solicitado</label>
-                <input
-                  type="text"
-                  value={formData.servicio}
-                  onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Motivo o Descripción Breve</label>
-                <textarea
-                  rows={2}
-                  placeholder="Detalla lo que necesitas resolver..."
-                  value={formData.mensaje}
-                  onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-lg transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={createOrderMutation.isPending}
-                  className="flex-1 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-1.5"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  {createOrderMutation.isPending ? "Registrando..." : "Confirmar y Enviar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      {/* Service modal */}
+      {modalOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4 backdrop-blur-sm"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/15 bg-[#0B1428] p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-amber-300">PFA Electricidad</p><h2 className="heading-font mt-2 text-2xl font-bold text-white">{modalType === "visita" ? "Agendar visita técnica" : "Solicitar servicio"}</h2><p className="mt-2 text-sm text-slate-400">Tu solicitud se registra y se envía preparada al número {DISPLAY_PHONE}.</p></div><button onClick={() => setModalOpen(false)} className="rounded-xl border border-white/10 p-2 text-slate-400 transition hover:text-white"><X className="h-5 w-5" /></button></div><form onSubmit={handleSubmit} className="mt-6 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><label className="label">Nombre completo *<input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="field mt-2" placeholder="Tu nombre" /></label><label className="label">Teléfono / WhatsApp *<input required type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} className="field mt-2" placeholder="+56 9..." /></label></div><div className="grid gap-4 sm:grid-cols-2"><label className="label">Comuna<select value={formData.comuna} onChange={(e) => setFormData({ ...formData, comuna: e.target.value })} className="field mt-2">{comunas.map((item) => <option key={item}>{item}</option>)}</select></label><label className="label">Tipo de propiedad<select value={formData.tipoPropiedad} onChange={(e) => setFormData({ ...formData, tipoPropiedad: e.target.value })} className="field mt-2"><option>Residencial</option><option>Departamento</option><option>Comercial</option><option>Industrial</option></select></label></div><label className="label">Servicio requerido<input value={formData.servicio} onChange={(e) => setFormData({ ...formData, servicio: e.target.value })} className="field mt-2" /></label><label className="label">Detalle del problema o proyecto<textarea rows={3} value={formData.mensaje} onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })} className="field mt-2 resize-none" placeholder="Cuéntanos qué necesitas..." /></label><div className="flex gap-3 pt-2"><button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10">Cancelar</button><button disabled={createOrderMutation.isPending} className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-300 disabled:opacity-60">{createOrderMutation.isPending ? "Registrando..." : "Confirmar solicitud"}</button></div></form></div></div>}
     </div>
   );
 }
