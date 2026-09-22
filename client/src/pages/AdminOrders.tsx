@@ -54,15 +54,24 @@ export default function AdminOrders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | OrderStatus>("todos");
   const [communeFilter, setCommuneFilter] = useState("todas");
+  const [panelPassword, setPanelPassword] = useState("");
+  const [passwordUnlocked, setPasswordUnlocked] = useState(false);
 
   const utils = trpc.useUtils();
-  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery(undefined, { enabled: isAdmin });
-  const { data: stats } = trpc.orders.stats.useQuery(undefined, { enabled: isAdmin });
+  const verifyPassword = trpc.orders.verifyPassword.useMutation({
+    onSuccess: () => {
+      setPasswordUnlocked(true);
+      toast.success("Panel desbloqueado");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery({ password: panelPassword }, { enabled: isAdmin && passwordUnlocked });
+  const { data: stats } = trpc.orders.stats.useQuery({ password: panelPassword }, { enabled: isAdmin && passwordUnlocked });
   const updateStatus = trpc.orders.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("Estado actualizado");
-      utils.orders.list.invalidate();
-      utils.orders.stats.invalidate();
+      utils.orders.list.invalidate({ password: panelPassword });
+      utils.orders.stats.invalidate({ password: panelPassword });
     },
     onError: (error) => toast.error(error.message)
   });
@@ -87,7 +96,11 @@ export default function AdminOrders() {
     return <AdminAccessState title="Acceso restringido" description="Esta sección es privada y solo está disponible para el administrador de PFA Electricidad." />;
   }
 
-  const changeStatus = (id: number, estado: OrderStatus) => updateStatus.mutate({ id, estado });
+  if (!passwordUnlocked) {
+    return <AdminPasswordGate password={panelPassword} setPassword={setPanelPassword} onSubmit={() => verifyPassword.mutate({ password: panelPassword })} loading={verifyPassword.isPending} error={verifyPassword.error?.message} />;
+  }
+
+  const changeStatus = (id: number, estado: OrderStatus) => updateStatus.mutate({ id, estado, password: panelPassword });
   const whatsappForClient = (phone: string, name: string, service: string) => `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hola ${name}, te contactamos de PFA Electricidad SpA por tu solicitud de ${service}.`)}`;
 
   return (
@@ -109,7 +122,7 @@ export default function AdminOrders() {
       </header>
 
       <main className="mx-auto max-w-[1500px] space-y-8 px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Vista general</p><h2 className="heading-font mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Pedidos y estadísticas</h2><p className="mt-2 text-sm text-slate-400">Todas las solicitudes quedan registradas y se preparan para el WhatsApp oficial <strong className="font-semibold text-slate-200">+56 9 6193 5547</strong>.</p></div><button onClick={() => { utils.orders.list.invalidate(); utils.orders.stats.invalidate(); toast.info("Datos actualizados"); }} className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-amber-300/40 hover:text-white"><RefreshCw className="h-3.5 w-3.5" /> Actualizar datos</button></div>
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Vista general</p><h2 className="heading-font mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Pedidos y estadísticas</h2><p className="mt-2 text-sm text-slate-400">Todas las solicitudes quedan registradas y se preparan para el WhatsApp oficial <strong className="font-semibold text-slate-200">+56 9 6193 5547</strong>.</p></div><button onClick={() => { utils.orders.list.invalidate({ password: panelPassword }); utils.orders.stats.invalidate({ password: panelPassword }); toast.info("Datos actualizados"); }} className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-amber-300/40 hover:text-white"><RefreshCw className="h-3.5 w-3.5" /> Actualizar datos</button></div>
 
         {/* KPI cards */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -130,6 +143,10 @@ export default function AdminOrders() {
       </main>
     </div>
   );
+}
+
+function AdminPasswordGate({ password, setPassword, onSubmit, loading, error }: { password: string; setPassword: (value: string) => void; onSubmit: () => void; loading: boolean; error?: string }) {
+  return <div className="grid min-h-screen place-items-center bg-[#050814] px-6 text-slate-100"><div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[.04] p-8 shadow-2xl"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-400/10 text-amber-300"><LockKeyhole className="h-6 w-6" /></span><div className="mt-5 text-center"><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">PFA Electricidad</p><h1 className="heading-font mt-2 text-2xl font-bold text-white">Panel Admin privado</h1><p className="mt-3 text-sm leading-6 text-slate-400">Ingresa la contraseña para ver pedidos, clientes y estadísticas.</p></div><form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="mt-6 space-y-3"><label className="label">Contraseña del panel<input autoFocus required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Ingresa tu contraseña" className="field mt-2 w-full" /></label>{error && <p className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-200">{error}</p>}<button disabled={loading || !password} className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Verificando..." : "Entrar al Panel Admin"}</button></form><Link href="/" className="mt-5 block text-center text-xs font-semibold text-slate-500 transition hover:text-amber-300">Volver al sitio público</Link></div></div>;
 }
 
 function AdminAccessState({ title, description, loading = false }: { title: string; description: string; loading?: boolean }) {

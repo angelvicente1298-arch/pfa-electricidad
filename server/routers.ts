@@ -5,6 +5,16 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM } from "./_core/llm";
+import { ENV } from "./_core/env";
+import { TRPCError } from "@trpc/server";
+import crypto from "crypto";
+
+function timingSafeEqualStrings(a: string, b: string) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 const DESTINATION_PHONE = "+56 9 6193 5547";
 const DESTINATION_DIGITS = "56961935547";
@@ -130,17 +140,55 @@ INFORMACIÓN VERIFICADA DE PFA:
         };
       }),
 
-    list: adminProcedure.query(async () => db.getAllOrders()),
-    stats: adminProcedure.query(async () => db.getOrderStats()),
+    verifyPassword: adminProcedure
+      .input(z.object({ password: z.string() }))
+      .mutation(({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Contraseña no configurada en el servidor" });
+        }
+        const valid = timingSafeEqualStrings(input.password, configured);
+        if (!valid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña incorrecta" });
+        }
+        return { valid: true };
+      }),
+
+    list: adminProcedure
+      .input(z.object({ password: z.string() }))
+      .query(async ({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured || !timingSafeEqualStrings(input.password, configured)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña del panel requerida o incorrecta" });
+        }
+        return db.getAllOrders();
+      }),
+
+    stats: adminProcedure
+      .input(z.object({ password: z.string() }))
+      .query(async ({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured || !timingSafeEqualStrings(input.password, configured)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña del panel requerida o incorrecta" });
+        }
+        return db.getOrderStats();
+      }),
 
     updateStatus: adminProcedure
       .input(
         z.object({
           id: z.number(),
           estado: z.enum(["pendiente", "en_camino", "contactado", "completado", "cancelado"]),
+          password: z.string(),
         })
       )
-      .mutation(async ({ input }) => db.updateOrderStatus(input.id, input.estado)),
+      .mutation(async ({ input }) => {
+        const configured = ENV.adminPanelPassword;
+        if (!configured || !timingSafeEqualStrings(input.password, configured)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Contraseña del panel requerida o incorrecta" });
+        }
+        return db.updateOrderStatus(input.id, input.estado);
+      }),
   }),
 });
 
