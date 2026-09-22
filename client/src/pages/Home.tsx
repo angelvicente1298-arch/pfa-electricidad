@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Phone,
   MessageSquare,
@@ -52,6 +52,19 @@ export default function Home() {
     urgencia: "Inmediata (Hoy)",
     mensaje: ""
   });
+
+  useEffect(() => {
+    const handleAdminShortcut = (event: KeyboardEvent) => {
+      const modifierPressed = event.ctrlKey || event.metaKey;
+      if (modifierPressed && event.shiftKey && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        window.location.assign("/admin/pedidos");
+      }
+    };
+
+    window.addEventListener("keydown", handleAdminShortcut);
+    return () => window.removeEventListener("keydown", handleAdminShortcut);
+  }, []);
 
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (data) => {
