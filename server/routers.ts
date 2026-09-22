@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { invokeLLM } from "./_core/llm";
 
 const DESTINATION_PHONE = "+56 9 6193 5547";
 const DESTINATION_DIGITS = "56961935547";
@@ -24,6 +25,56 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  assistant: router({
+    chat: publicProcedure
+      .input(
+        z.object({
+          message: z.string().trim().min(1).max(2000),
+          history: z.array(z.object({ sender: z.enum(["bot", "user"]), text: z.string().max(2000) })).max(12).default([]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const systemPrompt = `Eres el asistente virtual oficial de PFA Electricidad SpA, una empresa de servicios eléctricos en Santiago de Chile. Atiendes 24/7 en español chileno, con tono profesional, claro, cordial y práctico.
+
+INFORMACIÓN VERIFICADA DE PFA:
+- Teléfono y WhatsApp oficial: +56 9 6193 5547.
+- Cobertura: Santiago y Región Metropolitana, incluyendo Las Condes, Vitacura, Lo Barnechea, Providencia, Ñuñoa, Santiago Centro, La Reina, Peñalolén, Macul, San Miguel, Maipú, La Florida, Huechuraba, Colina/Chicureo y Lampa.
+- Servicios: instalaciones eléctricas residenciales, comerciales e industriales; reparación de fallas y emergencias; renovación y normalización de tableros; certificación SEC y declaración TE1; instalación de cargadores EV/Wallbox; iluminación LED; diagnóstico y visitas técnicas.
+- La empresa entrega presupuestos claros después de conocer el alcance o revisar el lugar. Nunca inventes precios, plazos exactos, disponibilidad de técnicos ni certificaciones específicas.
+- Para humo, chispas, olor a quemado o riesgo de incendio: indica cortar el automático general si es seguro hacerlo, alejarse del peligro y llamar inmediatamente al +56 9 6193 5547 o a emergencias. No recomiendes manipular cables energizados.
+- Si el cliente quiere contratar, pide nombre, comuna, teléfono y una descripción de qué pasó; luego invítalo a usar el formulario o WhatsApp.
+- Si la pregunta no tiene relación con electricidad o PFA, dilo brevemente y vuelve a ofrecer ayuda con servicios eléctricos.
+- Responde de forma breve, normalmente en 2 a 5 frases. No uses emojis ni caracteres especiales decorativos que puedan romperse en WhatsApp. Puedes usar listas simples con guiones.`;
+
+        const historyMessages = input.history.map((item) => ({
+          role: item.sender === "user" ? "user" as const : "assistant" as const,
+          content: item.text,
+        }));
+
+        try {
+          const response = await invokeLLM({
+            model: "gemini-3-flash-preview",
+            maxTokens: 800,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...historyMessages,
+              { role: "user", content: input.message },
+            ],
+          });
+          const content = response.choices[0]?.message?.content;
+          const reply = typeof content === "string"
+            ? content
+            : Array.isArray(content)
+              ? content.filter((part): part is { type: "text"; text: string } => part.type === "text").map((part) => part.text).join("\n")
+              : "Puedo ayudarte con servicios eléctricos, urgencias y certificación SEC. Si necesitas atención inmediata, escríbenos por WhatsApp al +56 9 6193 5547.";
+          return { reply: reply.trim() };
+        } catch (error) {
+          console.error("[Assistant] LLM unavailable:", error);
+          return { reply: "Estoy disponible 24/7 para orientarte. Para una respuesta inmediata, llama o escribe por WhatsApp al +56 9 6193 5547." };
+        }
+      }),
   }),
 
   orders: router({
