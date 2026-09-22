@@ -8,6 +8,13 @@ import * as db from "./db";
 const DESTINATION_PHONE = "+56 9 6193 5547";
 const DESTINATION_DIGITS = "56961935547";
 
+function normalizeChilePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("56")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+56${digits.slice(1)}`;
+  return `+56${digits}`;
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -33,9 +40,10 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        const normalizedPhone = normalizeChilePhone(input.telefono);
         const order = await db.createOrder({
           nombre: input.nombre,
-          telefono: input.telefono,
+          telefono: normalizedPhone,
           comuna: input.comuna,
           servicio: input.servicio,
           tipoPropiedad: input.tipoPropiedad || "Residencial",
@@ -51,7 +59,7 @@ export const appRouter = router({
           "PFA ELECTRICIDAD SPA",
           "------------------------------",
           `Cliente: ${input.nombre}`,
-          `Telefono: ${input.telefono}`,
+          `Telefono: ${normalizedPhone}`,
           `Comuna: ${input.comuna}`,
           `Servicio requerido: ${input.servicio}`,
           `Tipo de propiedad: ${input.tipoPropiedad || "Residencial"}`,
