@@ -129,7 +129,7 @@ export default function Home() {
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegación principal">
             <a href="#confianza" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Por qué PFA</a>
             <a href="#contacto" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Contacto</a>
-            <Link href="/admin/pedidos" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-300 transition hover:text-amber-300"><BarChart2 className="h-4 w-4 text-amber-400" /> Panel</Link>
+            <Link href="/admin/pedidos" title="Abrir Panel Admin" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-300 transition hover:text-amber-300"><BarChart2 className="h-4 w-4 text-amber-400" /> Panel Admin</Link>
           </nav>
 
           <div className="hidden items-center gap-2 sm:flex">
@@ -144,7 +144,7 @@ export default function Home() {
         {mobileMenuOpen && <div className="border-t border-white/10 bg-[#080D1C] px-4 py-4 sm:hidden">
           <div className="flex flex-col gap-3 text-sm font-semibold text-slate-300">
             <a href="#confianza" onClick={() => setMobileMenuOpen(false)}>Por qué PFA</a>
-            <Link href="/admin/pedidos">Panel de pedidos</Link>
+            <Link href="/admin/pedidos">Panel Admin · Pedidos</Link>
             <button onClick={() => { setMobileMenuOpen(false); openServiceModal(); }} className="mt-2 rounded-xl bg-amber-400 px-4 py-3 text-left font-black text-slate-950">Solicitar servicio</button>
           </div>
         </div>}

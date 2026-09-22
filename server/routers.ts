@@ -5,6 +5,9 @@ import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 
+const DESTINATION_PHONE = "+56 9 6193 5547";
+const DESTINATION_DIGITS = "56961935547";
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -12,9 +15,7 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
@@ -41,21 +42,27 @@ export const appRouter = router({
           urgencia: input.urgencia || "Normal",
           mensaje: input.mensaje || "",
           estado: "pendiente",
-          whatsappDestino: "+56 9 6193 5547",
+          whatsappDestino: DESTINATION_PHONE,
         });
 
-        // Generate clean WhatsApp link directed to +56 9 6193 5547
-        const text = `⚡ *NUEVO PEDIDO DE SERVICIO PFA ELECTRICIDAD SPA*\n\n` +
-          `👤 *Cliente:* ${input.nombre}\n` +
-          `📞 *Teléfono:* ${input.telefono}\n` +
-          `📍 *Comuna:* ${input.comuna}\n` +
-          `🛠️ *Servicio Requerido:* ${input.servicio}\n` +
-          `🏠 *Tipo Propiedad:* ${input.tipoPropiedad || "Residencial"}\n` +
-          `⏱️ *Urgencia:* ${input.urgencia || "Normal"}\n` +
-          `📝 *Detalle:* ${input.mensaje || "Sin detalle adicional"}\n\n` +
-          `_Registrado en el panel PFA Electricidad SpA_`;
+        // Plain-text message avoids unsupported emoji glyphs and remains readable on every phone.
+        const message = [
+          "NUEVO PEDIDO DE SERVICIO",
+          "PFA ELECTRICIDAD SPA",
+          "------------------------------",
+          `Cliente: ${input.nombre}`,
+          `Telefono: ${input.telefono}`,
+          `Comuna: ${input.comuna}`,
+          `Servicio requerido: ${input.servicio}`,
+          `Tipo de propiedad: ${input.tipoPropiedad || "Residencial"}`,
+          `Urgencia: ${input.urgencia || "Normal"}`,
+          `Detalle: ${input.mensaje || "Sin detalle adicional"}`,
+          "------------------------------",
+          "Solicitud registrada en el Panel Admin de PFA Electricidad.",
+          `Numero de recepcion: ${DESTINATION_PHONE}`,
+        ].join("\n");
 
-        const whatsappUrl = `https://wa.me/56961935547?text=${encodeURIComponent(text)}`;
+        const whatsappUrl = `https://wa.me/${DESTINATION_DIGITS}?text=${encodeURIComponent(message)}`;
 
         return {
           success: true,
@@ -64,13 +71,8 @@ export const appRouter = router({
         };
       }),
 
-    list: publicProcedure.query(async () => {
-      return db.getAllOrders();
-    }),
-
-    stats: publicProcedure.query(async () => {
-      return db.getOrderStats();
-    }),
+    list: publicProcedure.query(async () => db.getAllOrders()),
+    stats: publicProcedure.query(async () => db.getOrderStats()),
 
     updateStatus: publicProcedure
       .input(
@@ -79,9 +81,7 @@ export const appRouter = router({
           estado: z.enum(["pendiente", "en_camino", "contactado", "completado", "cancelado"]),
         })
       )
-      .mutation(async ({ input }) => {
-        return db.updateOrderStatus(input.id, input.estado);
-      }),
+      .mutation(async ({ input }) => db.updateOrderStatus(input.id, input.estado)),
   }),
 });
 
