@@ -18,26 +18,38 @@ function createAdminContext(): TrpcContext {
 
   return {
     user: adminUser,
-    req: {} as any,
-    res: {} as any,
+    req: { headers: {}, protocol: "https", ip: "test-admin-ip" } as any,
+    res: { setHeader: () => undefined } as any,
   };
 }
 
-describe("admin panel password secret validation", () => {
+describe("admin panel secure session", () => {
   it("rejects invalid password attempt", async () => {
     const caller = appRouter.createCaller(createAdminContext());
-    await expect(caller.orders.verifyPassword({ password: "wrong-password" })).rejects.toThrow();
+    await expect(caller.orders.verifyPassword({ password: "wrong-password" })).rejects.toThrow("Contraseña incorrecta");
   });
 
-  it("accepts configured secret password and validates access", async () => {
-    const caller = appRouter.createCaller(createAdminContext());
+  it("creates an HttpOnly session and reads protected data without a password input", async () => {
+    const ctx = createAdminContext();
+    let setCookie = "";
+    ctx.res = {
+      setHeader: (name: string, value: string) => {
+        if (name.toLowerCase() === "set-cookie") setCookie = value;
+      },
+    } as any;
+    const caller = appRouter.createCaller(ctx);
     const configuredSecret = process.env.ADMIN_PANEL_PASSWORD;
     expect(configuredSecret).toBeTruthy();
 
     const result = await caller.orders.verifyPassword({ password: configuredSecret! });
     expect(result.valid).toBe(true);
+    expect(setCookie).toContain("pfa_admin_session=");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Secure");
 
-    const stats = await caller.orders.stats({ password: configuredSecret! });
+    (ctx.req as any).headers.cookie = setCookie;
+    const stats = await caller.orders.stats();
     expect(stats).toHaveProperty("total");
   });
 });

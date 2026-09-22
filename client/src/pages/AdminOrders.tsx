@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -63,17 +63,21 @@ export default function AdminOrders() {
   const verifyPassword = trpc.orders.verifyPassword.useMutation({
     onSuccess: () => {
       setPasswordUnlocked(true);
+      setPanelPassword("");
       toast.success("Panel desbloqueado");
     },
     onError: (error) => toast.error(error.message),
   });
-  const { data: orders = [], isLoading: loadingOrders } = trpc.orders.list.useQuery({ password: panelPassword }, { enabled: isAdmin && passwordUnlocked });
-  const { data: stats } = trpc.orders.stats.useQuery({ password: panelPassword }, { enabled: isAdmin && passwordUnlocked });
-  const { data: allReviews = [], isLoading: loadingReviews } = trpc.reviews.listAll.useQuery({ password: panelPassword }, { enabled: isAdmin && passwordUnlocked });
+  const ordersQuery = trpc.orders.list.useQuery(undefined, { enabled: isAdmin && passwordUnlocked });
+  const statsQuery = trpc.orders.stats.useQuery(undefined, { enabled: isAdmin && passwordUnlocked });
+  const reviewsQuery = trpc.reviews.listAll.useQuery(undefined, { enabled: isAdmin && passwordUnlocked });
+  const { data: orders = [], isLoading: loadingOrders } = ordersQuery;
+  const { data: stats } = statsQuery;
+  const { data: allReviews = [], isLoading: loadingReviews } = reviewsQuery;
   const updateReviewStatusMutation = trpc.reviews.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("Estado de reseña actualizado");
-      utils.reviews.listAll.invalidate({ password: panelPassword });
+      utils.reviews.listAll.invalidate();
       utils.reviews.listApproved.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -81,11 +85,29 @@ export default function AdminOrders() {
   const updateStatus = trpc.orders.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("Estado actualizado");
-      utils.orders.list.invalidate({ password: panelPassword });
-      utils.orders.stats.invalidate({ password: panelPassword });
+      utils.orders.list.invalidate();
+      utils.orders.stats.invalidate();
     },
     onError: (error) => toast.error(error.message)
   });
+
+  const logoutAdmin = trpc.orders.logout.useMutation({
+    onSuccess: () => {
+      setPasswordUnlocked(false);
+      setPanelPassword("");
+      toast.success("Panel bloqueado");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  useEffect(() => {
+    const sessionError = ordersQuery.error || statsQuery.error || reviewsQuery.error;
+    if (sessionError) {
+      setPasswordUnlocked(false);
+      setPanelPassword("");
+      toast.error("La sesión del panel expiró. Ingresa nuevamente.");
+    }
+  }, [ordersQuery.error, statsQuery.error, reviewsQuery.error]);
 
   const communes = useMemo(() => Array.from(new Set(orders.map((order) => order.comuna))).sort(), [orders]);
   const filteredOrders = useMemo(() => orders.filter((order) => {
@@ -111,7 +133,7 @@ export default function AdminOrders() {
     return <AdminPasswordGate password={panelPassword} setPassword={setPanelPassword} onSubmit={() => verifyPassword.mutate({ password: panelPassword })} loading={verifyPassword.isPending} error={verifyPassword.error?.message} />;
   }
 
-  const changeStatus = (id: number, estado: OrderStatus) => updateStatus.mutate({ id, estado, password: panelPassword });
+  const changeStatus = (id: number, estado: OrderStatus) => updateStatus.mutate({ id, estado });
   const whatsappForClient = (phone: string, name: string, service: string) => `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hola ${name}, te contactamos de PFA Electricidad SpA por tu solicitud de ${service}.`)}`;
 
   return (
@@ -128,6 +150,7 @@ export default function AdminOrders() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="hidden items-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-400/5 px-3 py-2 text-xs font-semibold text-emerald-300 md:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Sistema en línea</div>
             <a href="https://wa.me/56961935547" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-white transition hover:bg-emerald-400 sm:px-4"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Abrir WhatsApp</span><span className="sm:hidden">WhatsApp</span></a>
+            <button onClick={() => logoutAdmin.mutate()} disabled={logoutAdmin.isPending} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-amber-300/40 hover:text-white disabled:opacity-50"><LockKeyhole className="h-3.5 w-3.5" /><span className="hidden sm:inline">Bloquear panel</span></button>
           </div>
         </div>
       </header>
@@ -142,7 +165,7 @@ export default function AdminOrders() {
             <p className="mt-2 text-sm text-slate-400">
               {activeTab === "pedidos"
                 ? "Todas las solicitudes quedan registradas y se preparan para el WhatsApp oficial +56 9 6193 5547."
-                : "Revisa opiniones reales enviadas por clientes y decide cuáles publicar en el sitio web."}
+                : "Revisa opiniones enviadas por clientes y decide cuáles publicar en el sitio web."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -152,10 +175,10 @@ export default function AdminOrders() {
             </div>
             <button onClick={() => {
               if (activeTab === "pedidos") {
-                utils.orders.list.invalidate({ password: panelPassword });
-                utils.orders.stats.invalidate({ password: panelPassword });
+                utils.orders.list.invalidate();
+                utils.orders.stats.invalidate();
               } else {
-                utils.reviews.listAll.invalidate({ password: panelPassword });
+                utils.reviews.listAll.invalidate();
                 utils.reviews.listApproved.invalidate();
               }
               toast.info("Datos actualizados");
@@ -190,7 +213,7 @@ export default function AdminOrders() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="heading-font text-xl font-bold text-white">Reseñas de clientes</h3>
-                  <p className="mt-1 text-sm text-slate-500">Aprueba comentarios reales para publicarlos en el sitio.</p>
+                  <p className="mt-1 text-sm text-slate-500">Revisa cada comentario y aprueba solo los que correspondan a una atención real.</p>
                 </div>
                 <span className="rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-300">{allReviews.filter((review) => review.estado === "pendiente").length} pendientes</span>
               </div>
@@ -205,7 +228,7 @@ export default function AdminOrders() {
                       <td className="px-5 py-5 align-top"><div className="flex gap-1 text-amber-300">{Array.from({ length: 5 }).map((_, index) => <Star key={index} className={`h-3.5 w-3.5 ${index < review.calificacion ? "fill-current" : "text-slate-600"}`} />)}</div></td>
                       <td className="max-w-[360px] px-5 py-5 align-top leading-5 text-slate-300">“{review.comentario}”</td>
                       <td className="px-5 py-5 align-top"><span className={`inline-block rounded-full border px-2.5 py-1 text-[11px] font-bold ${review.estado === "aprobada" ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200" : review.estado === "rechazada" ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-amber-300/30 bg-amber-400/10 text-amber-200"}`}>{review.estado === "aprobada" ? "Publicada" : review.estado === "rechazada" ? "Rechazada" : "Pendiente"}</span></td>
-                      <td className="space-x-2 px-5 py-5 text-right align-top">{review.estado !== "aprobada" && <button onClick={() => updateReviewStatusMutation.mutate({ id: review.id, estado: "aprobada", password: panelPassword })} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-black text-white transition hover:bg-emerald-400">Aprobar</button>}{review.estado !== "rechazada" && <button onClick={() => updateReviewStatusMutation.mutate({ id: review.id, estado: "rechazada", password: panelPassword })} className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1.5 text-[11px] font-bold text-rose-200 transition hover:bg-rose-400/20">Rechazar</button>}</td>
+                      <td className="space-x-2 px-5 py-5 text-right align-top">{review.estado !== "aprobada" && <button onClick={() => updateReviewStatusMutation.mutate({ id: review.id, estado: "aprobada" })} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-black text-white transition hover:bg-emerald-400">Aprobar</button>}{review.estado !== "rechazada" && <button onClick={() => updateReviewStatusMutation.mutate({ id: review.id, estado: "rechazada" })} className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1.5 text-[11px] font-bold text-rose-200 transition hover:bg-rose-400/20">Rechazar</button>}</td>
                     </tr>)}
                   </tbody>
                 </table>
