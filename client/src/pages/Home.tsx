@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Zap,
   Bot,
-  FileCheck2,
   Clock3,
   MapPin,
   CheckCircle2,
@@ -13,11 +12,6 @@ import {
   Send,
   X,
   Sparkles,
-  ChevronRight,
-  Building2,
-  Car,
-  Lightbulb,
-  Cpu,
   Star,
   BarChart2,
   ArrowUpRight,
@@ -101,14 +95,6 @@ export default function Home() {
     }, 450);
   };
 
-  const services = [
-    { icon: <Building2 />, title: "Instalaciones eléctricas", label: "Residencial y comercial", description: "Montajes, ampliaciones y circuitos completos con terminaciones limpias y seguras." },
-    { icon: <FileCheck2 />, title: "Certificación SEC", label: "TE1 y regularizaciones", description: "Carpetas técnicas y declaraciones para empalmes, ventas, patentes y aumentos de potencia." },
-    { icon: <Cpu />, title: "Tableros eléctricos", label: "Normalización y protección", description: "Renovación de protecciones, diferenciales y distribución para reducir riesgos y fallas." },
-    { icon: <Car />, title: "Cargadores EV", label: "Electromovilidad", description: "Instalación de Wallbox para hogares, estacionamientos y flotas con circuito dedicado." },
-    { icon: <Lightbulb />, title: "Iluminación LED", label: "Ahorro energético", description: "Proyectos de iluminación eficiente para hogares, oficinas, locales, bodegas y exteriores." },
-    { icon: <AlertTriangle />, title: "Urgencias 24/7", label: "Respuesta prioritaria", description: "Cortocircuitos, cortes, recalentamientos y fallas eléctricas atendidas con rapidez." }
-  ];
 
   return (
     <div className="min-h-screen bg-[#050814] text-slate-100 font-sans selection:bg-amber-400 selection:text-slate-950 pb-24 sm:pb-0">
@@ -141,7 +127,6 @@ export default function Home() {
           </Link>
 
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegación principal">
-            <a href="#servicios" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Servicios</a>
             <a href="#confianza" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Por qué PFA</a>
             <a href="#contacto" className="text-sm font-semibold text-slate-300 transition hover:text-amber-300">Contacto</a>
             <Link href="/admin/pedidos" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-300 transition hover:text-amber-300"><BarChart2 className="h-4 w-4 text-amber-400" /> Panel</Link>
@@ -158,7 +143,6 @@ export default function Home() {
         </div>
         {mobileMenuOpen && <div className="border-t border-white/10 bg-[#080D1C] px-4 py-4 sm:hidden">
           <div className="flex flex-col gap-3 text-sm font-semibold text-slate-300">
-            <a href="#servicios" onClick={() => setMobileMenuOpen(false)}>Servicios</a>
             <a href="#confianza" onClick={() => setMobileMenuOpen(false)}>Por qué PFA</a>
             <Link href="/admin/pedidos">Panel de pedidos</Link>
             <button onClick={() => { setMobileMenuOpen(false); openServiceModal(); }} className="mt-2 rounded-xl bg-amber-400 px-4 py-3 text-left font-black text-slate-950">Solicitar servicio</button>
@@ -222,14 +206,6 @@ export default function Home() {
               [<Clock3 className="h-5 w-5" />, "Respuesta prioritaria", "Atención coordinada 24/7"],
               [<ShieldCheck className="h-5 w-5" />, "Garantía y respaldo", "Transparencia en cada paso"]
             ].map(([icon, title, description], index) => <div key={index} className="flex items-center gap-3 border-b border-white/10 py-5 sm:border-b-0 sm:border-r sm:px-8 sm:first:pl-0 sm:last:border-r-0"><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/10 text-amber-300">{icon}</span><span><strong className="block text-sm text-white">{title}</strong><small className="mt-1 block text-xs text-slate-500">{description}</small></span></div>)}
-          </div>
-        </section>
-
-        {/* Services */}
-        <section id="servicios" className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
-          <div className="mb-12 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">Lo que hacemos</p><h2 className="heading-font mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">Un equipo para cada<br /><span className="text-slate-500">problema eléctrico.</span></h2></div><p className="max-w-sm text-sm leading-6 text-slate-400">Soluciones pensadas para que entiendas el trabajo, apruebes con confianza y recibas un resultado que dura.</p></div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => <article key={service.title} className="group rounded-2xl border border-white/10 bg-white/[.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:bg-amber-300/[.045] hover:shadow-[0_18px_50px_rgba(0,0,0,.22)]"><div className="mb-8 flex items-start justify-between"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-300 [&>svg]:h-6 [&>svg]:w-6">{service.icon}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{service.label}</span></div><h3 className="heading-font text-xl font-bold text-white transition group-hover:text-amber-200">{service.title}</h3><p className="mt-3 min-h-[48px] text-sm leading-6 text-slate-400">{service.description}</p><button onClick={() => openServiceModal(service.title)} className="mt-6 inline-flex items-center gap-1.5 text-xs font-black text-amber-300 transition hover:gap-2.5">Solicitar este servicio <ChevronRight className="h-3.5 w-3.5" /></button></article>)}
           </div>
         </section>
 
