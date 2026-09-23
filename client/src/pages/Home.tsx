@@ -179,13 +179,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050814]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3" aria-label="PFA Electricidad inicio">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 shadow-[0_10px_30px_rgba(245,158,11,.2)]">
-              <Zap className="h-6 w-6 fill-current" />
-            </span>
-            <span className="leading-none">
-              <span className="heading-font block text-2xl font-bold tracking-tight text-white">PFA <em className="not-italic text-amber-400">Electricidad</em></span>
-              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Instalaciones • Obras • SEC</span>
-            </span>
+            <img src="/manus-storage/pfa-electricidad-logo_e14b9398.webp" alt="PFA Electricidad SpA" className="h-12 w-auto max-w-[220px] object-contain object-left" />
           </Link>
 
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegación principal">
@@ -338,7 +332,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/10 bg-[#03050D]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Zap className="h-5 w-5 fill-current" /></span><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><img src="/manus-storage/pfa-electricidad-logo_e14b9398.webp" alt="PFA Electricidad SpA" className="h-9 w-auto max-w-[170px] object-contain object-left" /><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
       </footer>
 
       {/* Floating contact actions */}
