@@ -172,7 +172,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         checkWindowRate(assistantRequests, ctx, 20, 10 * 60 * 1000, "Demasiadas consultas. Intenta nuevamente en unos minutos.");
         recordWindowRate(assistantRequests, ctx);
-        const systemPrompt = `Eres el asistente virtual oficial de PFA Electricidad SpA, una empresa de servicios eléctricos en Santiago de Chile. Atiendes 24/7 en español chileno, con tono profesional, claro, cordial y práctico.
+        const systemPrompt = `Eres el asistente virtual oficial de PFA Electricidad SpA, una empresa de servicios eléctricos en Chile. Atiendes 24/7 en español chileno, con tono profesional, claro, cordial y práctico.
 
 INFORMACIÓN VERIFICADA DE PFA:
 - Teléfono y WhatsApp oficial: +56 9 6193 5547.

@@ -167,7 +167,7 @@ export default function Home() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-950">
               <Zap className="h-3 w-3 fill-current" /> Atención profesional
             </span>
-            <span className="hidden sm:inline">Servicios eléctricos garantizados en Santiago de Chile</span>
+            <span className="hidden sm:inline">Servicios eléctricos garantizados en Chile</span>
           </div>
           <a href={`tel:+${WHATSAPP_NUMBER}`} className="inline-flex items-center gap-1.5 font-bold text-amber-300 transition hover:text-amber-200">
             <Phone className="h-3.5 w-3.5" /> {DISPLAY_PHONE}
@@ -338,7 +338,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/10 bg-[#03050D]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Zap className="h-5 w-5 fill-current" /></span><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Santiago de Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Zap className="h-5 w-5 fill-current" /></span><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
       </footer>
 
       {/* Floating contact actions */}
