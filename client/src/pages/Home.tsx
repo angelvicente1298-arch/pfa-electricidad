@@ -27,6 +27,26 @@ import { trpc } from "@/lib/trpc";
 
 const WHATSAPP_NUMBER = "56961935547";
 const DISPLAY_PHONE = "+56 9 6193 5547";
+const PFA_LOGO_URL = "https://raw.githubusercontent.com/angelvicente1298-arch/pfa-electricidad/main/branding/pfa-electricidad-logo.webp";
+const IS_STATIC_PAGES = import.meta.env.VITE_GITHUB_PAGES === "true" || (typeof window !== "undefined" && window.location.hostname.endsWith("github.io"));
+
+function getStaticAssistantReply(message: string) {
+  const normalized = message.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  if (/(humo|chispa|cortocircuito|olor a quemado|incendio|electrocut|urgencia|emergencia)/.test(normalized)) {
+    return "Si hay humo, fuego, chispas o riesgo de descarga, aléjate y corta el interruptor general solo si puedes hacerlo sin exponerte. No manipules cables dañados. Para atención inmediata, llama al +56 9 6193 5547 o escribe por WhatsApp.";
+  }
+  if (/(whatsapp|contacto|numero|llamar|telefono)/.test(normalized)) {
+    return "Puedes contactar a PFA Electricidad por WhatsApp o llamar directamente al +56 9 6193 5547. Cuéntanos qué ocurrió, tu comuna y si es una urgencia.";
+  }
+  if (/(precio|cotiza|cotizacion|presupuesto|valor|costo)/.test(normalized)) {
+    return "Para preparar una cotización, envía por WhatsApp tu nombre, comuna, tipo de propiedad y una descripción de lo que necesitas. El equipo revisará los detalles y te responderá.";
+  }
+  if (/(servicio|instalacion|tablero|mantencion|certificacion|proyecto|industrial|domiciliaria)/.test(normalized)) {
+    return "PFA Electricidad realiza instalaciones domiciliarias, montaje eléctrico industrial en baja tensión, integración de tableros, mantenciones, ejecución de proyectos y respaldo profesional en Chile.";
+  }
+  return "Puedo orientarte sobre una falla eléctrica, una instalación, una mantención o una cotización. Escribe qué ocurrió y tu comuna; si prefieres, usa los botones de WhatsApp o llamada directa.";
+}
 
 const comunas = [
   "Las Condes", "Vitacura", "Lo Barnechea", "Providencia", "Ñuñoa",
@@ -148,6 +168,10 @@ export default function Home() {
     const history = chatMessages.slice(-12);
     setChatMessages((prev) => [...prev, { sender: "user", text: message }]);
     setChatInput("");
+    if (IS_STATIC_PAGES) {
+      window.setTimeout(() => setChatMessages((prev) => [...prev, { sender: "bot", text: getStaticAssistantReply(message) }]), 350);
+      return;
+    }
     assistantMutation.mutate({ message, history });
   };
 
@@ -179,7 +203,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050814]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3" aria-label="PFA Electricidad inicio">
-            <img src="/manus-storage/pfa-electricidad-logo_e14b9398.webp" alt="PFA Electricidad SpA" className="h-12 w-auto max-w-[220px] object-contain object-left" />
+            <img src={PFA_LOGO_URL} alt="PFA Electricidad SpA" className="h-12 w-auto max-w-[220px] object-contain object-left" />
           </Link>
 
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegación principal">
@@ -332,7 +356,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/10 bg-[#03050D]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><img src="/manus-storage/pfa-electricidad-logo_e14b9398.webp" alt="PFA Electricidad SpA" className="h-9 w-auto max-w-[170px] object-contain object-left" /><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><img src={PFA_LOGO_URL} alt="PFA Electricidad SpA" className="h-9 w-auto max-w-[170px] object-contain object-left" /><span><strong className="block text-sm text-white">PFA Electricidad SpA</strong><small className="text-xs text-slate-500">Instalaciones · Obras · Certificación SEC</small></span></div><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"><a href={`tel:+${WHATSAPP_NUMBER}`} className="transition hover:text-amber-300">{DISPLAY_PHONE}</a><span>Chile</span></div><p className="text-xs text-slate-600">© {new Date().getFullYear()} PFA Electricidad SpA</p></div>
       </footer>
 
       {/* Floating contact actions */}
