@@ -73,6 +73,23 @@ export default function Home() {
     mensaje: ""
   });
 
+  const buildWhatsAppUrl = (data: typeof formData) => {
+    const digits = data.telefono.replace(/\D/g, "");
+    const phone = digits.startsWith("56") ? digits : digits.startsWith("0") ? `56${digits.slice(1)}` : `56${digits}`;
+    const message = [
+      "NUEVO PEDIDO DE SERVICIO",
+      "PFA ELECTRICIDAD SPA",
+      "------------------------------",
+      `Cliente: ${data.nombre.trim()}`,
+      `Telefono: +${phone}`,
+      `Comuna: ${data.comuna}`,
+      `Tipo de propiedad: ${data.tipoPropiedad || "Residencial"}`,
+      `Urgencia: ${data.urgencia || "Normal"}`,
+      `Detalle: ${data.mensaje.trim() || "Sin detalle adicional"}`,
+    ].join("\n");
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  };
+
   useEffect(() => {
     const handleAdminShortcut = (event: KeyboardEvent) => {
       const modifierPressed = event.ctrlKey || event.metaKey;
@@ -96,7 +113,13 @@ export default function Home() {
       setModalOpen(false);
       setFormData({ nombre: "", telefono: "", comuna: "Las Condes", servicio: "Solicitud eléctrica", tipoPropiedad: "Residencial", urgencia: "Inmediata (Hoy)", mensaje: "" });
     },
-    onError: (error) => toast.error(`No se pudo registrar la solicitud: ${error.message}`)
+    onError: (error) => {
+      const whatsappUrl = buildWhatsAppUrl(formData);
+      toast.error(`No se pudo guardar en el Panel Admin: ${error.message}. El pedido quedó preparado para WhatsApp.`);
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setOrderConfirmationUrl(whatsappUrl);
+      setModalOpen(false);
+    }
   });
 
   const assistantMutation = trpc.assistant.chat.useMutation({
