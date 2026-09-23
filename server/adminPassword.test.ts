@@ -24,9 +24,26 @@ function createAdminContext(): TrpcContext {
 }
 
 describe("admin panel secure session", () => {
+  it("denies panel procedures to a signed-in user without the admin role", async () => {
+    const context = createAdminContext();
+    context.user = { ...context.user!, role: "user" };
+    const caller = appRouter.createCaller(context);
+
+    await expect(caller.orders.verifyPassword({ password: "anything" })).rejects.toThrow("required permission");
+    await expect(caller.orders.stats()).rejects.toThrow("required permission");
+  });
+
   it("rejects invalid password attempt", async () => {
     const caller = appRouter.createCaller(createAdminContext());
     await expect(caller.orders.verifyPassword({ password: "wrong-password" })).rejects.toThrow("Contraseña incorrecta");
+  });
+
+  it("rejects a missing or forged admin session", async () => {
+    const context = createAdminContext();
+    context.req.headers.cookie = "pfa_admin_session=forged.invalid";
+    const caller = appRouter.createCaller(context);
+
+    await expect(caller.orders.stats()).rejects.toThrow("Sesión del panel expirada");
   });
 
   it("creates an HttpOnly session and reads protected data without a password input", async () => {

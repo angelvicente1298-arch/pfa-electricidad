@@ -28,7 +28,13 @@ import { trpc } from "@/lib/trpc";
 const WHATSAPP_NUMBER = "56961935547";
 const DISPLAY_PHONE = "+56 9 6193 5547";
 const PFA_LOGO_URL = "https://raw.githubusercontent.com/angelvicente1298-arch/pfa-electricidad/main/branding/pfa-electricidad-logo.webp";
-const IS_STATIC_PAGES = import.meta.env.VITE_GITHUB_PAGES === "true" || (typeof window !== "undefined" && window.location.hostname.endsWith("github.io"));
+const IS_STATIC_PAGES = import.meta.env.VITE_GITHUB_PAGES === "true" || (typeof window !== "undefined" && (window.location.hostname === "github.io" || window.location.hostname.endsWith(".github.io")));
+
+function isValidChilePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const national = digits.startsWith("56") ? digits.slice(2) : digits.startsWith("0") ? digits.slice(1) : digits;
+  return /^[2-9]\d{8}$/.test(national);
+}
 
 function getStaticAssistantReply(message: string) {
   const normalized = message.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -66,7 +72,7 @@ export default function Home() {
     calificacion: 5,
     comentario: "",
   });
-  const { data: approvedReviews = [] } = trpc.reviews.listApproved.useQuery();
+  const { data: approvedReviews = [] } = trpc.reviews.listApproved.useQuery(undefined, { enabled: !IS_STATIC_PAGES, retry: false });
   const utils = trpc.useUtils();
   const submitReviewMutation = trpc.reviews.submit.useMutation({
     onSuccess: (res) => {
@@ -115,6 +121,10 @@ export default function Home() {
       const modifierPressed = event.ctrlKey || event.metaKey;
       if (modifierPressed && event.shiftKey && event.key.toLowerCase() === "a") {
         event.preventDefault();
+        if (IS_STATIC_PAGES) {
+          toast.info("El Panel Admin funciona en la versión privada con servidor.");
+          return;
+        }
         window.location.assign("/admin/pedidos");
       }
     };
@@ -153,10 +163,33 @@ export default function Home() {
     setModalOpen(true);
   };
 
+  const openReviewForm = () => {
+    if (IS_STATIC_PAGES) {
+      const reviewMessage = encodeURIComponent("Hola PFA Electricidad, quiero dejar una reseña de un servicio recibido. Mi opinión es: ");
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${reviewMessage}`, "_blank", "noopener,noreferrer");
+      toast.info("Te abrimos WhatsApp para recibir tu reseña.");
+      return;
+    }
+    setReviewModalOpen(true);
+  };
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!formData.nombre.trim() || !formData.telefono.trim()) {
       toast.error("Completa tu nombre y teléfono para continuar.");
+      return;
+    }
+    if (!isValidChilePhone(formData.telefono)) {
+      toast.error("Ingresa un número chileno válido de 9 dígitos.");
+      return;
+    }
+    if (IS_STATIC_PAGES) {
+      const whatsappUrl = buildWhatsAppUrl(formData);
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setOrderConfirmationUrl(whatsappUrl);
+      setModalOpen(false);
+      setFormData({ nombre: "", telefono: "", comuna: "Las Condes", servicio: "Solicitud eléctrica", tipoPropiedad: "Residencial", urgencia: "Inmediata (Hoy)", mensaje: "" });
+      toast.success("Tu solicitud quedó preparada para WhatsApp.");
       return;
     }
     createOrderMutation.mutate({ ...formData, nombre: formData.nombre.trim(), telefono: formData.telefono.trim(), mensaje: formData.mensaje.trim() });
@@ -304,7 +337,7 @@ export default function Home() {
               <h2 className="heading-font mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Reseñas del servicio</h2>
               <p className="mt-2 text-sm text-slate-400">Las opiniones se reciben por este formulario y solo se muestran después de una revisión manual.</p>
             </div>
-            <button onClick={() => setReviewModalOpen(true)} className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-xs font-black text-amber-200 transition hover:bg-amber-300/20">
+            <button onClick={openReviewForm} className="inline-flex w-fit items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-xs font-black text-amber-200 transition hover:bg-amber-300/20">
               <Star className="h-4 w-4 fill-current" /> Dejar mi reseña
             </button>
           </div>

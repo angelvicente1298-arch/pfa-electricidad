@@ -1,0 +1,26 @@
+packages:
+  - "."
+
+patchedDependencies:
+  wouter@3.7.1: patches/wouter@3.7.1.patch
+
+overrides:
+  '@babel/core': 7.29.6
+  body-parser: 1.20.6
+  browserslist: 4.28.7
+  esbuild: 0.25.10
+  form-data: 4.0.6
+  follow-redirects: 1.16.0
+  lodash: 4.17.23
+  lodash-es: 4.17.23
+  dompurify: 3.4.13
+  mermaid: 11.16.1
+  mdast-util-to-hast: 13.2.1
+  nanoid@3: 3.3.18
+  picomatch: 4.0.4
+  postcss: 8.5.23
+  qs: 6.16.0
+  rollup: 4.59.0
+  tar: 7.5.21
+  uuid: 11.1.1
+  path-to-regexp: 0.1.13

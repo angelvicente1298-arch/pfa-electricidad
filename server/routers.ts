@@ -145,9 +145,11 @@ const DESTINATION_DIGITS = "56961935547";
 
 function normalizeChilePhone(value: string) {
   const digits = value.replace(/\D/g, "");
-  if (digits.startsWith("56")) return `+${digits}`;
-  if (digits.startsWith("0")) return `+56${digits.slice(1)}`;
-  return `+56${digits}`;
+  const national = digits.startsWith("56") ? digits.slice(2) : digits.startsWith("0") ? digits.slice(1) : digits;
+  if (!/^[2-9]\d{8}$/.test(national)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Ingresa un número chileno válido de 9 dígitos." });
+  }
+  return `+56${national}`;
 }
 
 export const appRouter = router({
@@ -229,7 +231,7 @@ INFORMACIÓN VERIFICADA DE PFA:
       .mutation(async ({ ctx, input }) => {
         checkWindowRate(orderSubmissions, ctx, 10, 15 * 60 * 1000, "Demasiadas solicitudes desde este dispositivo. Intenta nuevamente más tarde.");
         const normalizedPhone = normalizeChilePhone(input.telefono);
-        const order = await db.createOrder({
+        await db.createOrder({
           nombre: input.nombre,
           telefono: normalizedPhone,
           comuna: input.comuna,
@@ -260,7 +262,6 @@ INFORMACIÓN VERIFICADA DE PFA:
         return {
           success: true,
           whatsappUrl,
-          order,
         };
       }),
 
