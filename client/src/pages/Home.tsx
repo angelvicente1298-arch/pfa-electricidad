@@ -83,8 +83,6 @@ export default function Home() {
       `Cliente: ${data.nombre.trim()}`,
       `Telefono: +${phone}`,
       `Comuna: ${data.comuna}`,
-      `Tipo de propiedad: ${data.tipoPropiedad || "Residencial"}`,
-      `Urgencia: ${data.urgencia || "Normal"}`,
       `Detalle: ${data.mensaje.trim() || "Sin detalle adicional"}`,
     ].join("\n");
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;

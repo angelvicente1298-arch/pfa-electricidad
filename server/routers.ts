@@ -251,8 +251,6 @@ INFORMACIÓN VERIFICADA DE PFA:
           `Cliente: ${input.nombre}`,
           `Telefono: ${normalizedPhone}`,
           `Comuna: ${input.comuna}`,
-          `Tipo de propiedad: ${input.tipoPropiedad || "Residencial"}`,
-          `Urgencia: ${input.urgencia || "Normal"}`,
           `Detalle: ${input.mensaje || "Sin detalle adicional"}`,
         ].join("\n");
 
