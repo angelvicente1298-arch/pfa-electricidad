@@ -4,14 +4,11 @@ import {
   MessageSquare,
   ShieldCheck,
   Zap,
-  Bot,
   Clock3,
   MapPin,
   CheckCircle2,
   AlertTriangle,
-  Send,
   X,
-  Sparkles,
   Star,
   ArrowUpRight,
   ArrowRight,
@@ -34,24 +31,6 @@ function isValidChilePhone(value: string) {
   const digits = value.replace(/\D/g, "");
   const national = digits.startsWith("56") ? digits.slice(2) : digits.startsWith("0") ? digits.slice(1) : digits;
   return /^[2-9]\d{8}$/.test(national);
-}
-
-function getStaticAssistantReply(message: string) {
-  const normalized = message.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  if (/(humo|chispa|cortocircuito|olor a quemado|incendio|electrocut|urgencia|emergencia)/.test(normalized)) {
-    return "Si hay humo, fuego, chispas o riesgo de descarga, aléjate y corta el interruptor general solo si puedes hacerlo sin exponerte. No manipules cables dañados. Para atención inmediata, llama al +56 9 6193 5547 o escribe por WhatsApp.";
-  }
-  if (/(whatsapp|contacto|numero|llamar|telefono)/.test(normalized)) {
-    return "Puedes contactar a PFA Electricidad por WhatsApp o llamar directamente al +56 9 6193 5547. Cuéntanos qué ocurrió, tu comuna y si es una urgencia.";
-  }
-  if (/(precio|cotiza|cotizacion|presupuesto|valor|costo)/.test(normalized)) {
-    return "Para preparar una cotización, envía por WhatsApp tu nombre, comuna, tipo de propiedad y una descripción de lo que necesitas. El equipo revisará los detalles y te responderá.";
-  }
-  if (/(servicio|instalacion|tablero|mantencion|certificacion|proyecto|industrial|domiciliaria)/.test(normalized)) {
-    return "PFA Electricidad realiza instalaciones domiciliarias, montaje eléctrico industrial en baja tensión, integración de tableros, mantenciones, ejecución de proyectos y respaldo profesional en Chile.";
-  }
-  return "Puedo orientarte sobre una falla eléctrica, una instalación, una mantención o una cotización. Escribe qué ocurrió y tu comuna; si prefieres, usa los botones de WhatsApp o llamada directa.";
 }
 
 const comunas = [
@@ -84,11 +63,6 @@ export default function Home() {
     onError: (err) => toast.error(err.message),
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: "bot" | "user"; text: string }>>([
-    { sender: "bot", text: "¡Hola! Soy el asistente de PFA Electricidad. ¿Qué necesitas resolver hoy?" }
-  ]);
   const [formData, setFormData] = useState({
     nombre: "",
     telefono: "",
@@ -152,10 +126,6 @@ export default function Home() {
     }
   });
 
-  const assistantMutation = trpc.assistant.chat.useMutation({
-    onSuccess: (data) => setChatMessages((prev) => [...prev, { sender: "bot", text: data.reply }]),
-    onError: () => setChatMessages((prev) => [...prev, { sender: "bot", text: `Estoy disponible 24/7. Si necesitas atención inmediata, llama o escribe al ${DISPLAY_PHONE}.` }]),
-  });
 
   const openServiceModal = (service?: string, type: "servicio" | "visita" = "servicio") => {
     if (service) setFormData((prev) => ({ ...prev, servicio: service }));
@@ -195,24 +165,6 @@ export default function Home() {
     createOrderMutation.mutate({ ...formData, nombre: formData.nombre.trim(), telefono: formData.telefono.trim(), mensaje: formData.mensaje.trim() });
   };
 
-  const sendAssistantMessage = (rawMessage: string) => {
-    const message = rawMessage.trim();
-    if (!message || assistantMutation.isPending) return;
-    const history = chatMessages.slice(-12);
-    setChatMessages((prev) => [...prev, { sender: "user", text: message }]);
-    setChatInput("");
-    if (IS_STATIC_PAGES) {
-      window.setTimeout(() => setChatMessages((prev) => [...prev, { sender: "bot", text: getStaticAssistantReply(message) }]), 350);
-      return;
-    }
-    assistantMutation.mutate({ message, history });
-  };
-
-  const handleChatSend = (event: React.FormEvent) => {
-    event.preventDefault();
-    const message = chatInput.trim();
-    sendAssistantMessage(message);
-  };
 
 
   return (
@@ -394,12 +346,10 @@ export default function Home() {
 
       {/* Floating contact actions */}
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
-        <button onClick={() => setChatOpen(!chatOpen)} className="group inline-flex items-center gap-2 rounded-2xl border border-amber-200/50 bg-amber-400 px-3.5 py-2.5 text-slate-950 shadow-[0_12px_35px_rgba(245,158,11,.32)] transition hover:-translate-y-0.5 hover:bg-amber-300"><span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-950/10"><Bot className="h-4 w-4" /></span><span className="text-left"><small className="block text-[9px] font-black uppercase tracking-widest">Asistente IA · 24/7</small><strong className="block text-xs">Consultas y emergencias</strong></span><Sparkles className="h-4 w-4 fill-current" /></button>
         <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola%20PFA%20Electricidad,%20necesito%20asistencia`} target="_blank" rel="noreferrer" className="grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-white shadow-[0_12px_35px_rgba(16,185,129,.32)] transition hover:scale-105 hover:bg-emerald-400" aria-label="WhatsApp PFA Electricidad"><MessageSquare className="h-6 w-6 fill-current" /></a>
       </div>
 
       {/* Chat */}
-      {chatOpen && <div className="fixed bottom-24 right-4 z-50 flex h-[460px] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-amber-300/30 bg-[#080D1B] shadow-2xl"><div className="flex items-center justify-between border-b border-white/10 bg-[#101B34] p-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-400 text-slate-950"><Bot className="h-5 w-5" /></span><span><strong className="block text-sm text-white">Asistente PFA</strong><small className="text-xs text-emerald-300">Disponible 24/7 · {DISPLAY_PHONE}</small></span></div><button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button></div><div className="grid grid-cols-1 border-b border-white/10 bg-[#0C1427] p-3"><a href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola%20PFA%20Electricidad,%20necesito%20ayuda`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-2 py-2 text-[11px] font-black text-white transition hover:bg-emerald-400"><MessageSquare className="h-3.5 w-3.5" /> WhatsApp</a></div><div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">{chatMessages.map((message, index) => <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}><span className={`max-w-[84%] rounded-2xl px-3 py-2.5 leading-5 ${message.sender === "user" ? "bg-amber-400 font-semibold text-slate-950" : "border border-white/10 bg-white/5 text-slate-200"}`}>{message.text}</span></div>)}{assistantMutation.isPending && <div className="flex justify-start"><span className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-slate-400">El asistente está escribiendo...</span></div>}</div><form onSubmit={handleChatSend} className="flex gap-2 border-t border-white/10 bg-[#0C1427] p-3"><input disabled={assistantMutation.isPending} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Escribe tu consulta..." className="field flex-1" /><button disabled={assistantMutation.isPending} className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400 text-slate-950 disabled:opacity-50"><Send className="h-4 w-4" /></button></form></div>}
 
       {/* Review modal */}
       {reviewModalOpen && (
